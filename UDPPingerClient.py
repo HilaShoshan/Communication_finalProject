@@ -6,14 +6,14 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_addr = ('localhost', 12000)
 sock.settimeout(1)  # wait up to one second for a reply
 
-try:
+# parameters for the final report:
+minRTT = math.inf
+maxRTT = - math.inf
+sumRTT = 0
+numRTT = 0  # the number of massages received
+numLosts = 0
 
-    # parameters for the final report:
-    minRTT = math.inf
-    maxRTT = - math.inf
-    sumRTT = 0
-    numRTT = 0
-    numLosts = 0
+try:
 
     # send 10 pings to the server using UDP (connectionless protocol)
     for i in range(1, 11):
@@ -21,7 +21,7 @@ try:
         message = 'Ping ' + str(i) + " " + time.ctime(start)
         try:
 
-            sent = sock.sendto(message, server_addr)
+            sent = sock.sendto(message, server_addr)  # or massage.encode()
             print("Sent " + message)
             data, server = sock.recvfrom(4096)
             print("Received " + data)
@@ -45,6 +45,9 @@ finally:
     print("closing socket")
     print("Minimum RTT: ", minRTT)
     print("Maximum RTT: ", maxRTT)
-    print("Average RTT: ", sumRTT/numRTT)
+    if numRTT == 0:
+        print("Average RTT: 0 massages received!")
+    else:
+        print("Average RTT: ", sumRTT/numRTT)
     print("Packet Loss Rate: ", (numLosts/10)*100)  # in percentage
     sock.close()
