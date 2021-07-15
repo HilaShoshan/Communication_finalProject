@@ -21,10 +21,10 @@ try:
         message = 'Ping ' + str(i) + " " + time.ctime(start)
         try:
 
-            sent = sock.sendto(message, server_addr)  # or massage.encode()
+            sent = sock.sendto(message.encode(), server_addr)  # or massage.encode()
             print("Sent " + message)
             data, server = sock.recvfrom(4096)
-            print("Received " + data)
+            print("Received " , data)
             end = time.time()
             RTT = end - start
             print("RTT: " + str(RTT) + " seconds\n")
@@ -49,5 +49,5 @@ finally:
         print("Average RTT: 0 massages received!")
     else:
         print("Average RTT: ", sumRTT/numRTT)
-    print("Packet Loss Rate: ", (numLosts/10)*100)  # in percentage
+    print("Packet Loss Rate: ", (numLosts/10)*100,"%")  # in percentage
     sock.close()
