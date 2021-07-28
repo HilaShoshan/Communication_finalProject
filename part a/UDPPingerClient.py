@@ -22,9 +22,9 @@ try:
         try:
 
             sent = sock.sendto(message.encode(), server_addr)  # or massage.encode()
-            print("Sent " + message)
+            print("Sent ", message)
             data, server = sock.recvfrom(4096)
-            print("Received " , data)
+            print("Received ", data)
             end = time.time()
             RTT = end - start
             print("RTT: " + str(RTT) + " seconds\n")
@@ -42,12 +42,11 @@ try:
 
 finally:
     print("---------------REPORT-----------------")
-    print("closing socket")
     print("Minimum RTT: ", minRTT)
     print("Maximum RTT: ", maxRTT)
     if numRTT == 0:
         print("Average RTT: 0 massages received!")
     else:
         print("Average RTT: ", sumRTT/numRTT)
-    print("Packet Loss Rate: ", (numLosts/10)*100,"%")  # in percentage
+    print("Packet Loss Rate: ", (numLosts/10)*100, "%")  # in percentage
     sock.close()
