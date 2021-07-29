@@ -1,16 +1,18 @@
-g++ -std=c++11 -g Udp-Server.cpp Udp-Client.cpp
+all: Udp-Server Udp-Client
+ 
+Udp-Server: Udp-Server.o
+	g++ -o Udp-Server Udp-Server.o
 
-all: 
-	g++ Udp-Server.cpp Udp-Server.o
-	g++ Udp-Client.cpp Udp-Client.o
+Udp-Server.o: Udp-Server.cpp
+	g++ -std=c++11 -c Udp-Server.cpp
 
-server:
-	g++ Udp-Server.cpp Udp-Server.o
-	sudo ./Udp-Server.o
+Udp-Client: Udp-Client.o
+	g++ -o Udp-Client Udp-Client.o
 
-client:
-	g++ Udp-Client.cpp Udp-Client.o
-	sudo ./Udp-Client.o
+Udp-Client.o: Udp-Client.cpp
+	g++ -std=c++11 -c Udp-Client.cpp
+
+.PHONY: clean all
 
 clean:
-	rm -f *.o 
+	rm *.o Udp-Server Udp-Client

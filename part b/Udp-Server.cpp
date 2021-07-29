@@ -28,7 +28,7 @@
 #include <unistd.h>
 #endif
 
-#define SERVER_IP_ADDRESS "192.168.63.129"
+#define SERVER_IP_ADDRESS "192.168.1.34"
 #define SERVER_PORT 5060
 
 
@@ -107,7 +107,7 @@ int main()
 		int recv_len = -1;
 
 		//try to receive some data, this is a blocking call
-		if ((recv_len = recvfrom(s, buffer, sizeof(buffer) -1, 0, (struct sockaddr *) &clientAddress, &clientAddressLen)) == -1)
+		if ((recv_len = recvfrom(s, buffer, sizeof(buffer) -1, 0, (struct sockaddr *) &clientAddress, (socklen_t*) &clientAddressLen) == -1))
 		{
 			printf("recvfrom() failed with error code : %d"
 #if defined _WIN32
@@ -149,4 +149,3 @@ int main()
 
     return 0;
 }
-

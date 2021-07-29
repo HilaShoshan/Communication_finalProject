@@ -3,7 +3,7 @@
 // Robert Iakobashvili for Ariel uni, BSD/MIT/Apache-license.
 //
 // 1. Correct the IP-address to be your local-IP address.
-// 2. Check that server and client have the same rendezvous  port and the same IP-address
+// 2. Check that server and client have the same rendezvous port and the same IP-address
 // 3. Compile using either MSVC or g++ compiler.
 // 4. First run the server.
 // 5. In the console run netstat -a to see the server UDP socket at port 5060.
@@ -29,7 +29,7 @@
 #include <unistd.h>
 #endif
 
-#define SERVER_IP_ADDRESS "192.168.63.129"
+#define SERVER_IP_ADDRESS "192.168.1.34"
 #define SERVER_PORT 5060
 
 int main()
@@ -48,7 +48,7 @@ int main()
 
 	int s = -1;
 	char bufferReply[80] = { '\0' };
-	char message[] = "Good morning, Vietnam\n";
+	char message[] = "Good morning from Elad and Hila :) \n";
 	int messageLen = strlen(message) + 1;
 
 	// Create socket
@@ -97,7 +97,7 @@ int main()
 	memset((char *)&fromAddress, 0, sizeof(fromAddress));
 
 	// try to receive some data, this is a blocking call
-	if (recvfrom(s, bufferReply, sizeof(bufferReply) -1, 0, (struct sockaddr *) &fromAddress, &(fromAddressSize) == -1)
+	if (recvfrom(s, bufferReply, sizeof(bufferReply) -1, 0, (struct sockaddr *) &fromAddress, (socklen_t*) &fromAddressSize) == -1)
 	{
 		printf("recvfrom() failed with error code  : %d"
 #if defined _WIN32
@@ -120,4 +120,3 @@ int main()
 
     return 0;
 }
-
