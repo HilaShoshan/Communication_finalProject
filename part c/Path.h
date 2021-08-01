@@ -1,20 +1,22 @@
 #pragma once
 
-#include "Node.hpp"
+#include <stdio.h>
+#include <vector>
+#include "Node.h"
+using namespace std;
 
 
 class Path {
 
     private:
-    Node dest;
-    vector<Node> path;
+    vector<Node*> path;
 
     public:
     
     //getters:
 
     Node getDest() {
-        return this -> dest; 
+        return this -> path.at(path.size()-1);  // the last Node on the path
     }
 
     vector<Node> getPath() {
