@@ -29,7 +29,7 @@
 #include <unistd.h>
 #endif
 
-#define SERVER_IP_ADDRESS "192.168.1.34"
+#define SERVER_IP_ADDRESS "10.0.0.5"
 #define SERVER_PORT 5060
 
 int main()
@@ -67,11 +67,11 @@ int main()
 	// Setup the server address structure.
 	// Port and IP should be filled in network byte order (learn bin-endian, little-endian)
 	//
-	struct sockaddr_in serverAddress;
+	struct sockaddr_in6 serverAddress;
 	memset(&serverAddress, 0, sizeof(serverAddress));
-	serverAddress.sin_family = AF_INET;
-	serverAddress.sin_port = htons(SERVER_PORT);
-	int rval = inet_pton(AF_INET, (const char*)SERVER_IP_ADDRESS, &serverAddress.sin_addr);
+	serverAddress.sin6_family = AF_INET;
+	serverAddress.sin6_port = htons(SERVER_PORT);
+	int rval = inet_pton(AF_INET, (const char*)SERVER_IP_ADDRESS, &serverAddress.sin6_addr);
 	if (rval <= 0)
 	{
 		printf("inet_pton() failed");
@@ -91,7 +91,7 @@ int main()
 			return -1;
 	}
 
-	struct sockaddr_in fromAddress;
+	struct sockaddr_in6 fromAddress;
 	int fromAddressSize = sizeof(fromAddress);
 
 	memset((char *)&fromAddress, 0, sizeof(fromAddress));
@@ -109,7 +109,7 @@ int main()
 		return -1;
 	}
 
-	printf(bufferReply);
+	printf("%s", bufferReply);
 
 #if defined _WIN32
 	closesocket(s);

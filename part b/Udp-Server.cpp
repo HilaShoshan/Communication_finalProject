@@ -28,7 +28,7 @@
 #include <unistd.h>
 #endif
 
-#define SERVER_IP_ADDRESS "192.168.1.34"
+#define SERVER_IP_ADDRESS "10.0.0.5"
 #define SERVER_PORT 5060
 
 
@@ -65,11 +65,11 @@ int main()
 	}
 
 	// setup Server address structure
-	struct sockaddr_in serverAddress;
+	struct sockaddr_in6 serverAddress;
 	memset((char *)&serverAddress, 0, sizeof(serverAddress));
-	serverAddress.sin_family = AF_INET;
-	serverAddress.sin_port = htons(SERVER_PORT);
-	inet_pton(AF_INET, (const char*)SERVER_IP_ADDRESS, &(serverAddress.sin_addr));
+	serverAddress.sin6_family = AF_INET;
+	serverAddress.sin6_port = htons(SERVER_PORT);
+	inet_pton(AF_INET, (const char*)SERVER_IP_ADDRESS, &(serverAddress.sin6_addr));
 
 	//Bind
 	if (bind(s, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1)
@@ -87,7 +87,7 @@ int main()
 	printf("After bind(). Waiting for clients");
 
 	// setup Client address structure
-	struct sockaddr_in clientAddress;
+	struct sockaddr_in6 clientAddress;
 	int clientAddressLen = sizeof(clientAddress);
 
 	memset((char *)&clientAddress, 0, sizeof(clientAddress));
@@ -120,10 +120,10 @@ int main()
 		}
 
 		char clientIPAddrReadable[32] = { '\0' };
-		inet_ntop(AF_INET, &clientAddress.sin_addr, clientIPAddrReadable, sizeof(clientIPAddrReadable));
+		inet_ntop(AF_INET, &clientAddress.sin6_addr, clientIPAddrReadable, sizeof(clientIPAddrReadable));
 
 		//print details of the client/peer and the data received
-		printf("Received packet from %s:%d\n", clientIPAddrReadable, ntohs(clientAddress.sin_port));
+		printf("Received packet from %s:%d\n", clientIPAddrReadable, ntohs(clientAddress.sin6_port));
 		printf("Data is: %s\n", buffer);
 
 		//now reply to the Client
