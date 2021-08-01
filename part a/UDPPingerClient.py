@@ -2,6 +2,7 @@ import socket
 import time
 import math
 
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_addr = ('localhost', 12000)
 sock.settimeout(1)  # wait up to one second for a reply
@@ -17,11 +18,14 @@ try:
 
     # send 10 pings to the server using UDP (connectionless protocol)
     for i in range(1, 11):
+
         start = time.time()
         message = 'Ping ' + str(i) + " " + time.ctime(start)
+        heartbeat_msg = "~~~~~~ I'm Alive ~~~~~~"
+
         try:
 
-            sent = sock.sendto(message.encode(), server_addr)  # or massage.encode()
+            sent = sock.sendto(message.encode(), server_addr)
             print("Sent ", message)
             data, server = sock.recvfrom(4096)
             print("Received ", data)
