@@ -28,7 +28,7 @@
 #include <unistd.h>
 #endif
 
-#define SERVER_IP_ADDRESS "10.0.0.5"
+#define SERVER_IP_ADDRESS "192.168.63.129"
 #define SERVER_PORT 5060
 
 
@@ -52,7 +52,7 @@ int main()
 	int messageLen = strlen(message) + 1;
 
 	// Create socket
-	if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) // In Windows -1 is SOCKET_ERROR
+	if ((s = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)) == -1) // In Windows -1 is SOCKET_ERROR
 	{
 		printf("Could not create socket : %d"
 #if defined _WIN32
@@ -67,9 +67,9 @@ int main()
 	// setup Server address structure
 	struct sockaddr_in6 serverAddress;
 	memset((char *)&serverAddress, 0, sizeof(serverAddress));
-	serverAddress.sin6_family = AF_INET;
+	serverAddress.sin6_family = AF_INET6;
 	serverAddress.sin6_port = htons(SERVER_PORT);
-	inet_pton(AF_INET, (const char*)SERVER_IP_ADDRESS, &(serverAddress.sin6_addr));
+	inet_pton(AF_INET6, (const char*)SERVER_IP_ADDRESS, &(serverAddress.sin6_addr));
 
 	//Bind
 	if (bind(s, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1)
@@ -120,7 +120,7 @@ int main()
 		}
 
 		char clientIPAddrReadable[32] = { '\0' };
-		inet_ntop(AF_INET, &clientAddress.sin6_addr, clientIPAddrReadable, sizeof(clientIPAddrReadable));
+		inet_ntop(AF_INET6, &clientAddress.sin6_addr, clientIPAddrReadable, sizeof(clientIPAddrReadable));
 
 		//print details of the client/peer and the data received
 		printf("Received packet from %s:%d\n", clientIPAddrReadable, ntohs(clientAddress.sin6_port));
