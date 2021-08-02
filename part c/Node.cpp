@@ -4,14 +4,8 @@
 using namespace std;
 
 
-Function open_tcp_sock(const char* ip, int port) {
-    int sockfd;
-    struct sockaddr_in server_addr;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if(sockfd < 0) {
-        return Nack;
-    }
-    server_addr.sin_family = AF_INET;  // IPV4
+Function init_ip_port(const char* ip, int port) {
+    server_addr.sin_family = AF_INET;  // IPv4
     server_addr.sin_port = port;
     server_addr.sin_addr.s_addr = inet_addr(ip);
     return Ack;
@@ -24,6 +18,25 @@ Command hashit (std::string const& inString) {
     if (inString == "send") return _send;
     if (inString == "route") return _route;
     if (inString == "peers") return _peers;
+}
+
+
+char* make_str_msg (Message msg) {
+    char* bytes = new char[SIZE];
+    int arr[] = {msg.msg_id, msg.src_id, msg.dest_id, msg.num_trailing_msg, msg.func_id};
+    int index = 0;
+    for (int field : arr) {  // convert a int into 4 bytes char*
+        bytes[index] = (field >> 24) & 0xFF;
+        bytes[index+1] = (field >> 16) & 0xFF;
+        bytes[index+2] = (field >> 8) & 0xFF;
+        bytes[index+3] = field & 0xFF;
+        index+=4;
+    }
+    for (char c = *msg.payload; c; c=*++msg.payload) {
+        bytes[index] = c; 
+        index++;
+    }
+    return bytes;
 }
 
 
@@ -46,10 +59,10 @@ Function Node::do_command(string command) {
             string ip = info.substr(0, pos2);
             char_arr = &ip[0];
             string port = info.substr(pos2); 
-            if (open_tcp_sock(char_arr, stoi(port)) == Nack) {
+            if (init_ip_port(char_arr, stoi(port)) == Nack) {
                 return Nack; 
             }
-            return connect();  
+            return myconnect();  
         }
 
     case _send:
@@ -77,10 +90,12 @@ Function Node::do_command(string command) {
         // the message should contains the id / ip on a header or whatever  (?)
         */
     case _route:
-        return route(stoi(info));  // info contains the id only
+        // return route(stoi(info));  // info contains the id only
+        return Nack;
             
     case _peers:
-        return peers();
+        // return peers();
+        return Nack;
     
     default:
         return Nack;
@@ -88,16 +103,27 @@ Function Node::do_command(string command) {
 }
 
 
-Function Node::connect() {
+Function Node::myconnect() {
+
+    // open tcp socket
+    
+    int sockfd;
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if(sockfd < 0) {
+        return Nack;
+    }
 
     // act as client and send a connect message
 
-    if (connect(sockfd, (const struct sockaddr*) &serveraddr, sizeof(serveraddr)) < 0) {
+    if (connect(sockfd, (const struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
         return Nack;
     }
-    struct Message msg = {MSG_ID, this->ID, 0, 0, Function::Connect, ""};  // connect message
+    char* payload = {nullptr};
+    struct Message msg = {MSG_ID, this->ID, 0, 0, Function::Connect, payload};  // connect message
     MSG_ID++;
-    send(sockfd, &msg, strlen(msg), 0);  
+    char* str_msg = make_str_msg(msg);
+    send(sockfd, &str_msg, strlen(str_msg), 0);  
+    delete[] str_msg;
 
     // act as server and listen to the return message of the other node
 
@@ -115,7 +141,7 @@ Function Node::connect() {
     if (getsockopt(sockfd, IPPROTO_TCP, TCP_CONGESTION, buf, &len) != 0) { 
         return Nack;
     } 
-    valread = read(new_sock, buff, 512);  // read the message from buffer
+    valread = read(new_sock, buff, SIZE);  // read the message from buffer
     cout << "valread: " << valread << endl;
     
 }

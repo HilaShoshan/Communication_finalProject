@@ -9,11 +9,13 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 // #include "Path.h"
+#define SIZE 512
 
 
 // global variables
 int MSG_ID = 1;  // a global counter to the number of messages
-static char buff[512] = {0};  // max size of a message
+static char buff[SIZE] = {0};  // max size of a message
+struct sockaddr_in server_addr;
 
 
 /* enum for the function numbers */
@@ -59,10 +61,10 @@ class Node {
     }
 
     // command & helper functions
-    Function connect();
+    Function myconnect();
     Function discover(int destID);
     Function route(int discover_message_id, int ans_len, std::vector<int> nodes);
-    Function send(int len, std::string message);
+    Function mysend(int len, std::string message);
     Function relay(int nextID, int num_msgs);
     Function peers();
     // Path getPath(int destID) {}  // returns the path from paths vector if exists, or search one
