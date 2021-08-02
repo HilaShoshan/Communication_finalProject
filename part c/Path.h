@@ -9,7 +9,7 @@ using namespace std;
 class Path {
 
     private:
-    vector<Node*> path;
+    vector<Node> path;
 
     public:
     

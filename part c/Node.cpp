@@ -1,8 +1,10 @@
 #include "Node.h" 
 #include "Message.h"
 
+using namespace std;
 
-Function open_tcp_sock(string ip, int port) {
+
+Function open_tcp_sock(const char* ip, int port) {
     int sockfd;
     struct sockaddr_in server_addr;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -16,26 +18,41 @@ Function open_tcp_sock(string ip, int port) {
 }
 
 
+Command hashit (std::string const& inString) {
+    if (inString == "setid") return _setid;
+    if (inString == "connect") return _connect;
+    if (inString == "send") return _send;
+    if (inString == "route") return _route;
+    if (inString == "peers") return _peers;
+}
+
+
 Function Node::do_command(string command) {
 
     size_t pos = command.find(",");
     string command_name = command.substr(0, pos);
     string info = command.substr(pos);  // after the ","
-    switch (command_name) {
+    char* char_arr;
 
-    case "setid":
-        return setID(stoi(info));  // info contains the id only
+    switch (hashit(command_name)) {
 
-    case "connect":
-        size_t pos2 = command.find(":");
-        string ip = info.substr(0, pos2);
-        string port = info.substr(pos2); 
-        if (open_tcp_sock(ip, stoi(port)) == Nack) {
-            return Nack; 
+    case _setid:
+        setID(stoi(info));  // info contains the id only
+        return Ack;
+
+    case _connect:
+        {
+            size_t pos2 = command.find(":");
+            string ip = info.substr(0, pos2);
+            char_arr = &ip[0];
+            string port = info.substr(pos2); 
+            if (open_tcp_sock(char_arr, stoi(port)) == Nack) {
+                return Nack; 
+            }
+            return connect();  
         }
-        return connect();  
 
-    case "send":
+    case _send:
         return Nack;
         /* 
         vector<string> results;
@@ -59,14 +76,15 @@ Function Node::do_command(string command) {
         return current.send(len, message); 
         // the message should contains the id / ip on a header or whatever  (?)
         */
-    case "route":
+    case _route:
         return route(stoi(info));  // info contains the id only
             
-    case "peers":
+    case _peers:
         return peers();
-    }
+    
     default:
         return Nack;
+    }
 }
 
 
