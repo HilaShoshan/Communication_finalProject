@@ -9,13 +9,15 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 // #include "Path.h"
+#include <netinet/in.h>
+#include <netinet/tcp.h> 
 #define SIZE 512
 
 
 // global variables
 int MSG_ID = 1;  // a global counter to the number of messages
 static char buff[SIZE] = {0};  // max size of a message
-struct sockaddr_in server_addr;
+struct sockaddr_in server_addr, new_addr;
 
 
 /* enum for the function numbers */

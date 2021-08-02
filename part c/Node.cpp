@@ -130,18 +130,18 @@ Function Node::myconnect() {
     if(bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         return Nack;
     }
-    if (listen(sockfd, LINSTENPORT) == 0) {
+    if (listen(sockfd, 10) == 0) {
 	    cout << "Node " << this->ID << " Listening ..." << endl;
     } else {
         return Nack;
     }
-    addr_size = sizeof(new_addr);
-    new_sock = accept(sockfd, (struct sockaddr*) &new_addr, &addr_size);
-    len = sizeof(buff); 
-    if (getsockopt(sockfd, IPPROTO_TCP, TCP_CONGESTION, buf, &len) != 0) { 
+    socklen_t addr_size = sizeof(new_addr);
+    int new_sock = accept(sockfd, (struct sockaddr*) &new_addr, &addr_size);
+    socklen_t len = sizeof(buff); 
+    if (getsockopt(sockfd, IPPROTO_TCP, TCP_CONGESTION, buff, &len) != 0) { 
         return Nack;
     } 
-    valread = read(new_sock, buff, SIZE);  // read the message from buffer
+    int valread = read(new_sock, buff, SIZE);  // read the message from buffer
     cout << "valread: " << valread << endl;
     
 }
