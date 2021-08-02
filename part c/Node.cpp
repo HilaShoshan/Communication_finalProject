@@ -43,8 +43,9 @@ char* make_str_msg (Message msg) {
 Function Node::do_command(string command) {
 
     size_t pos = command.find(",");
+    size_t pos2;
     string command_name = command.substr(0, pos);
-    string info = command.substr(pos);  // after the ","
+    string info = command.substr(pos+1);  // after the ","
     char* char_arr;
 
     switch (hashit(command_name)) {
@@ -55,10 +56,10 @@ Function Node::do_command(string command) {
 
     case _connect:
         {
-            size_t pos2 = command.find(":");
+            pos2 = info.find(":");
             string ip = info.substr(0, pos2);
             char_arr = &ip[0];
-            string port = info.substr(pos2); 
+            string port = info.substr(pos2+1); 
             if (init_ip_port(char_arr, stoi(port)) == Nack) {
                 return Nack; 
             }
@@ -98,6 +99,7 @@ Function Node::do_command(string command) {
         return Nack;
     
     default:
+        cout << "Wrong command syntax, please try again" << endl;
         return Nack;
     }
 }
@@ -116,6 +118,7 @@ Function Node::myconnect() {
     // act as client and send a connect message
 
     if (connect(sockfd, (const struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
+        cout << "shitttt" << endl;
         return Nack;
     }
     char* payload = {nullptr};

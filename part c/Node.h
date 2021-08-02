@@ -11,7 +11,9 @@
 // #include "Path.h"
 #include <netinet/in.h>
 #include <netinet/tcp.h> 
+
 #define SIZE 512
+#define MAX 100
 
 
 // global variables
@@ -72,8 +74,24 @@ class Node {
     // Path getPath(int destID) {}  // returns the path from paths vector if exists, or search one
 
     //constructor
-    Node(int id) : ID(id) {}
+    Node(int id) : ID(id) {
+        printf("Successfuly created a Node with ID = %d\n", id);
+        char buf[MAX];
+        while(1) {
+            printf("Please enter a command: ");
+            fgets(buf, MAX, stdin);
+            Function response = do_command(buf);
+            if(response == Ack) 
+                printf("Ack\n");
+            else 
+                printf("Nack\n");
+        }
+    }
 
     //destructor
-    ~Node() {}
+    ~Node() {
+        /* swap the contents of the vector into a temporary 
+        that will get destroyed and free the memory */
+        std::vector<std::vector<Node>>().swap(paths);
+    }
 };
