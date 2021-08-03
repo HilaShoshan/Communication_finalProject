@@ -4,11 +4,67 @@
 using namespace std;
 
 
-Function init_ip_port(const char* ip, int port) {
+/* open a socket, listen to inputs */
+void Node::listen_to_inputs() {
+    int ret;
+    /*
+    listenfd = socket(AF_INET, SOCK_DGRAM, 0);
+    memset(&serv_addr, '0', sizeof(serv_addr));
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = inet_addr(this->ip);
+    serv_addr.sin_port = htons(this->port); 
+
+    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+
+    printf("adding fd1(%d) to monitoring\n", listenfd);
+    add_fd_to_monitoring(listenfd);
+    listen(listenfd, 10);
+
+    while(1) {
+        printf("waiting for input...\n");
+	    ret = wait_for_input();
+	    printf("fd: %d is ready. reading...\n", ret);
+	    read(ret, buff, 1025);
+        Function response = do_command(buff);
+        if(response == Ack) 
+            printf("Ack\n");
+        else 
+            printf("Nack\n");
+    }
+    */
+}
+
+
+Function Node::open_tcp_socket(const char* ip, int port) {
+    socklen_t addr_size = sizeof(new_addr);
+    int new_sock = accept(this->listenfd, (struct sockaddr*)&new_addr, &addr_size);
+    return Nack;
+/// hererereerererererere
+   /* socklen_t len = sizeof(buff); 
+    if (getsockopt(sockfd, IPPROTO_TCP, TCP_CONGESTION, buf, &len) != 0) { 
+        perror("getsockopt");
+        return -1;
+    } 
+
+    int listenfd2 = 0;
+    listenfd2 = socket(AF_INET, SOCK_DGRAM, 0);
+    memset(&serv_addr, '0', sizeof(serv_addr));
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = inet_addr(this->ip);
+    serv_addr.sin_port = htons(this->port); 
+
+    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+
+    printf("adding fd1(%d) to monitoring\n", listenfd);
+    add_fd_to_monitoring(listenfd);
+    listen(listenfd, 10);
+    
     server_addr.sin_family = AF_INET;  // IPv4
     server_addr.sin_port = port;
     server_addr.sin_addr.s_addr = inet_addr(ip);
-    return Ack;
+    return Ack; */
 }
 
 
@@ -60,7 +116,7 @@ Function Node::do_command(string command) {
             string ip = info.substr(0, pos2);
             char_arr = &ip[0];
             string port = info.substr(pos2+1); 
-            if (init_ip_port(char_arr, stoi(port)) == Nack) {
+            if (open_tcp_socket(char_arr, stoi(port)) == Nack) {
                 return Nack; 
             }
             return myconnect();  
@@ -117,7 +173,7 @@ Function Node::myconnect() {
 
     // act as client and send a connect message
 
-    if (connect(sockfd, (const struct sockaddr*) &server_addr, sizeof(server_addr)) < 0) {
+    if (connect(sockfd, (const struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
         cout << "shitttt" << endl;
         return Nack;
     }
@@ -130,7 +186,7 @@ Function Node::myconnect() {
 
     // act as server and listen to the return message of the other node
 
-    if(bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+    if(bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
         return Nack;
     }
     if (listen(sockfd, 10) == 0) {

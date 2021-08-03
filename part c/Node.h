@@ -11,6 +11,7 @@
 // #include "Path.h"
 #include <netinet/in.h>
 #include <netinet/tcp.h> 
+#include "select.h"
 
 #define SIZE 512
 #define MAX 100
@@ -19,7 +20,7 @@
 // global variables
 int MSG_ID = 1;  // a global counter to the number of messages
 static char buff[SIZE] = {0};  // max size of a message
-struct sockaddr_in server_addr, new_addr;
+struct sockaddr_in serv_addr, new_addr;
 
 
 /* enum for the function numbers */
@@ -48,10 +49,14 @@ class Node {
 
     private:
     int ID; 
+    int port;
+    char* ip;
     std::vector<std::vector<Node>> paths = {};  // saves all the paths from the current node to other nodes on the network
+    int listenfd = 0;
 
     public:
 
+    void listen_to_inputs();
     Function do_command(std::string command);
 
     // getter
@@ -72,10 +77,17 @@ class Node {
     Function relay(int nextID, int num_msgs);
     Function peers();
     // Path getPath(int destID) {}  // returns the path from paths vector if exists, or search one
+    Function open_tcp_socket(const char* ip, int port);
 
     //constructor
-    Node(int id) : ID(id) {
-        printf("Successfuly created a Node with ID = %d\n", id);
+    Node(int id, char* ip, int port) : ID(id) {
+        printf("Successfuly created a Node with ID = %d, IP = %s, Port = %d\n", 
+                                            id, ip, port); 
+        int length = sizeof(ip)/sizeof(char); 
+        printf("len %d", length);
+        listen_to_inputs();
+
+        /*
         char buf[MAX];
         while(1) {
             printf("Please enter a command: ");
@@ -85,7 +97,7 @@ class Node {
                 printf("Ack\n");
             else 
                 printf("Nack\n");
-        }
+        } */
     }
 
     //destructor

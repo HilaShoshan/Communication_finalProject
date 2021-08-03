@@ -3,6 +3,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <string.h>
+#include <vector>
 
 #include "select.h"
 
@@ -12,15 +13,19 @@
 static fd_set rfds, rfds_copy;
 static int max_fd = 0;
 static int initialized = FALSE;
-static int *alloced_fds = NULL;
+// static int *alloced_fds = NULL;
+::std::vector<int> alloced_fds;
 static int alloced_fds_num = 0;
 
 
 static int add_fd_to_monitoring_internal(const unsigned int fd)
 {
-  int *tmp_alloc;
-  tmp_alloc = realloc(alloced_fds, sizeof(int)*(alloced_fds_num+1));
-  if (tmp_alloc == NULL)
+  // int *tmp_alloc;
+  ::std::vector<int> tmp_alloc((alloced_fds_num+1), 0);
+  // tmp_alloc = realloc(alloced_fds, sizeof(int)*(alloced_fds_num+1));
+  tmp_alloc.resize(alloced_fds_num+1);
+  // if (tmp_alloc == NULL)
+  if (tmp_alloc.empty())
     return -1;
   alloced_fds = tmp_alloc;
   alloced_fds[alloced_fds_num++]=fd;
