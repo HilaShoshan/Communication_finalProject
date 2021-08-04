@@ -3,6 +3,7 @@
 
 using namespace std;
 
+
 /* get 4 chars (bytes) and return the int */
 int bytesToInt(char a, char b, char c, char d) {
     int n = 0;
@@ -50,36 +51,39 @@ void Node::listen_to_inputs() {
     listen(listenfd, 10);
 
     while(1) {
+        socklen_t addr_size = sizeof(new_addr);
+        new_sock = accept(listenfd, (struct sockaddr*)&new_addr, &addr_size);
+        if (new_sock != -1) {
+            printf("adding fd1(%d) to monitoring\n", new_sock);
+            add_fd_to_monitoring(new_sock);
+        }
+
         printf("waiting for input...\n");
 	    ret = wait_for_input();
 	    printf("fd: %d is ready. reading...\n", ret);
-	    read(ret, input_buff, 1025);
-        Function response = do_command(input_buff);
-        if(response == Ack) 
-            printf("Ack\n");
-        else 
-            printf("Nack\n");
-        
-        socklen_t addr_size = sizeof(new_addr);
-        new_sock = accept(listenfd, (struct sockaddr*)&new_addr, &addr_size);
-        socklen_t len = sizeof(input_buff); 
-        if (getsockopt(listenfd, IPPROTO_TCP, TCP_CONGESTION, input_buff, &len) != 0) { 
-            perror("getsockopt");
-            exit(1);
+	    read(ret, buff, 512);
+        if (isalpha(buff[0])) {  // is a command
+            Function response = do_command(buff);
+            if(response == Ack) 
+                printf("Ack\n");
+            else 
+                printf("Nack\n");
         }
-        int valread = read(new_sock, buff, 512);  
-        int dest_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]);
-        int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
-        if (func_id == Function::Connect) {  // check if its a connect massage
-            char payload[4];
-            for (int i = 0; i < 4; i++) {  // copy msg_id (of the conect msg) to the payload 
-                payload[i] = buff[i];  
-            }
-            struct Message msg = {MSG_ID, this->ID, dest_id, 0, Function::Ack, payload};  // connect message
-            MSG_ID++;
-            char* str_msg = make_str_msg(msg);
-            send(new_sock, &str_msg, strlen(str_msg), 0);  
-        }  // if something wrong, send Nack ....
+        else {  // another massage (in the given form, start with id)
+            int dest_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]);
+            int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
+            if (func_id == Function::Connect) {  // check if its a connect massage
+                char payload[4];
+                for (int i = 0; i < 4; i++) {  // copy msg_id (of the conect msg) to the payload 
+                    payload[i] = buff[i];  
+                }
+                struct Message msg = {MSG_ID, this->ID, dest_id, 0, Function::Ack, payload};  // connect message
+                MSG_ID++;
+                char* str_msg = make_str_msg(msg);
+                send(new_sock, &str_msg, strlen(str_msg), 0);  
+            }  // if something wrong, send Nack ....
+        }
+        
     }
 }
 
@@ -179,6 +183,7 @@ Function Node::myconnect() {
 
     int e = connect(server_sock, (struct sockaddr*)&server_addr, sizeof(server_addr));
     if(e == -1) {
+        cout << "shit" << endl;
         return Nack;
     }
 

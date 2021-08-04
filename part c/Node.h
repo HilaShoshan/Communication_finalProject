@@ -12,6 +12,7 @@
 // #include "Path.h"
 #include <netinet/in.h>
 #include <netinet/tcp.h> 
+#include<ctype.h>
 #include "select.h"
 
 #define SIZE 512
