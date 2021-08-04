@@ -4,6 +4,7 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <list>
 // #include </usr/local/lib/boost/algorithm/string.hpp>
 #include <stdlib.h>
 #include <unistd.h>
@@ -20,7 +21,7 @@
 // global variables
 int MSG_ID = 1;  // a global counter to the number of messages
 static char buff[SIZE] = {0};  // max size of a message
-struct sockaddr_in serv_addr, new_addr;
+char input_buff[1025];  // max size to get inputs
 
 
 /* enum for the function numbers */
@@ -48,11 +49,14 @@ enum Command {
 class Node {
 
     private:
-    int ID; 
-    int port;
-    char* ip;
+
+    int ID = 0; 
+    int Port;
+    char* IP;
     std::vector<std::vector<Node>> paths = {};  // saves all the paths from the current node to other nodes on the network
-    int listenfd = 0;
+    std::vector<std::list<std::string>> neighbors = {};
+    struct sockaddr_in my_addr, server_addr, new_addr;
+    int listenfd, server_sock, new_sock;
 
     public:
 
@@ -67,6 +71,7 @@ class Node {
     // setter
     void setID(int id) {
         this -> ID = id; 
+        printf("Set node ID to: %d\n", ID);
     }
 
     // command & helper functions
@@ -80,11 +85,9 @@ class Node {
     Function open_tcp_socket(const char* ip, int port);
 
     //constructor
-    Node(int id, char* ip, int port) : ID(id) {
+    Node(char* ip, int port) : IP(ip), Port(port) {
         printf("Successfuly created a Node with ID = %d, IP = %s, Port = %d\n", 
-                                            id, ip, port); 
-        int length = sizeof(ip)/sizeof(char); 
-        printf("len %d", length);
+                                            ID, IP, Port); 
         listen_to_inputs();
 
         /*
@@ -100,10 +103,10 @@ class Node {
         } */
     }
 
-    //destructor
+    //destructor 
     ~Node() {
         /* swap the contents of the vector into a temporary 
         that will get destroyed and free the memory */
         std::vector<std::vector<Node>>().swap(paths);
-    }
+    } 
 };

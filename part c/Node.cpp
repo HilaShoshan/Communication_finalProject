@@ -3,79 +3,15 @@
 
 using namespace std;
 
-
-/* open a socket, listen to inputs */
-void Node::listen_to_inputs() {
-    int ret;
-    /*
-    listenfd = socket(AF_INET, SOCK_DGRAM, 0);
-    memset(&serv_addr, '0', sizeof(serv_addr));
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr(this->ip);
-    serv_addr.sin_port = htons(this->port); 
-
-    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-
-    printf("adding fd1(%d) to monitoring\n", listenfd);
-    add_fd_to_monitoring(listenfd);
-    listen(listenfd, 10);
-
-    while(1) {
-        printf("waiting for input...\n");
-	    ret = wait_for_input();
-	    printf("fd: %d is ready. reading...\n", ret);
-	    read(ret, buff, 1025);
-        Function response = do_command(buff);
-        if(response == Ack) 
-            printf("Ack\n");
-        else 
-            printf("Nack\n");
-    }
-    */
+/* get 4 chars (bytes) and return the int */
+int bytesToInt(char a, char b, char c, char d) {
+    int n = 0;
+    n = n + (a & 0x000000ff);
+    n = n + ((b & 0x000000ff) << 8);
+    n = n + ((c & 0x000000ff) << 16);
+    n = n + ((d & 0x000000ff) << 24);
+    return n;
 }
-
-
-Function Node::open_tcp_socket(const char* ip, int port) {
-    socklen_t addr_size = sizeof(new_addr);
-    int new_sock = accept(this->listenfd, (struct sockaddr*)&new_addr, &addr_size);
-    return Nack;
-/// hererereerererererere
-   /* socklen_t len = sizeof(buff); 
-    if (getsockopt(sockfd, IPPROTO_TCP, TCP_CONGESTION, buf, &len) != 0) { 
-        perror("getsockopt");
-        return -1;
-    } 
-
-    int listenfd2 = 0;
-    listenfd2 = socket(AF_INET, SOCK_DGRAM, 0);
-    memset(&serv_addr, '0', sizeof(serv_addr));
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr(this->ip);
-    serv_addr.sin_port = htons(this->port); 
-
-    bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-
-    printf("adding fd1(%d) to monitoring\n", listenfd);
-    add_fd_to_monitoring(listenfd);
-    listen(listenfd, 10);
-    
-    server_addr.sin_family = AF_INET;  // IPv4
-    server_addr.sin_port = port;
-    server_addr.sin_addr.s_addr = inet_addr(ip);
-    return Ack; */
-}
-
-
-Command hashit (std::string const& inString) {
-    if (inString == "setid") return _setid;
-    if (inString == "connect") return _connect;
-    if (inString == "send") return _send;
-    if (inString == "route") return _route;
-    if (inString == "peers") return _peers;
-}
-
 
 char* make_str_msg (Message msg) {
     char* bytes = new char[SIZE];
@@ -93,6 +29,84 @@ char* make_str_msg (Message msg) {
         index++;
     }
     return bytes;
+}
+
+
+/* open a socket, listen to inputs */
+void Node::listen_to_inputs() {
+    int ret;
+    
+    listenfd = socket(AF_INET, SOCK_DGRAM, 0);
+    memset(&my_addr, '0', sizeof(my_addr));
+
+    my_addr.sin_family = AF_INET;
+    my_addr.sin_addr.s_addr = inet_addr(this->IP);
+    my_addr.sin_port = htons(this->Port); 
+
+    bind(listenfd, (struct sockaddr*)&my_addr, sizeof(my_addr));
+
+    printf("adding fd1(%d) to monitoring\n", listenfd);
+    add_fd_to_monitoring(listenfd);
+    listen(listenfd, 10);
+
+    while(1) {
+        printf("waiting for input...\n");
+	    ret = wait_for_input();
+	    printf("fd: %d is ready. reading...\n", ret);
+	    read(ret, input_buff, 1025);
+        Function response = do_command(input_buff);
+        if(response == Ack) 
+            printf("Ack\n");
+        else 
+            printf("Nack\n");
+        
+        socklen_t addr_size = sizeof(new_addr);
+        new_sock = accept(listenfd, (struct sockaddr*)&new_addr, &addr_size);
+        socklen_t len = sizeof(input_buff); 
+        if (getsockopt(listenfd, IPPROTO_TCP, TCP_CONGESTION, input_buff, &len) != 0) { 
+            perror("getsockopt");
+            exit(1);
+        }
+        int valread = read(new_sock, buff, 512);  
+        int dest_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]);
+        int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
+        if (func_id == Function::Connect) {  // check if its a connect massage
+            char payload[4];
+            for (int i = 0; i < 4; i++) {  // copy msg_id (of the conect msg) to the payload 
+                payload[i] = buff[i];  
+            }
+            struct Message msg = {MSG_ID, this->ID, dest_id, 0, Function::Ack, payload};  // connect message
+            MSG_ID++;
+            char* str_msg = make_str_msg(msg);
+            send(new_sock, &str_msg, strlen(str_msg), 0);  
+        }  // if something wrong, send Nack ....
+    }
+}
+
+
+Function Node::open_tcp_socket(const char* ip, int port) {
+    socklen_t len;
+
+    server_sock = socket(AF_INET, SOCK_STREAM, 0);
+    if(server_sock < 0) {
+        return Nack;
+    }
+    printf("Successfully open TCP socket.\n");
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = port;
+    server_addr.sin_addr.s_addr = inet_addr(ip);
+
+    return Ack; 
+}
+
+
+Command hashit (std::string const& inString) {
+    if (inString == "setid") return _setid;
+    if (inString == "connect") return _connect;
+    if (inString == "send") return _send;
+    if (inString == "route") return _route;
+    if (inString == "peers") return _peers;
 }
 
 
@@ -163,44 +177,28 @@ Function Node::do_command(string command) {
 
 Function Node::myconnect() {
 
-    // open tcp socket
-    
-    int sockfd;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if(sockfd < 0) {
+    int e = connect(server_sock, (struct sockaddr*)&server_addr, sizeof(server_addr));
+    if(e == -1) {
         return Nack;
     }
 
-    // act as client and send a connect message
-
-    if (connect(sockfd, (const struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) {
-        cout << "shitttt" << endl;
-        return Nack;
-    }
     char* payload = {nullptr};
-    struct Message msg = {MSG_ID, this->ID, 0, 0, Function::Connect, payload};  // connect message
+    struct Message msg = {MSG_ID, this->ID, 0, 0, Function::Connect, payload};  
     MSG_ID++;
     char* str_msg = make_str_msg(msg);
-    send(sockfd, &str_msg, strlen(str_msg), 0);  
+    send(server_sock, &str_msg, strlen(str_msg), 0);  
+    int valread = read(server_sock, buff, 512);
+    int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
+    if (func_id == Function::Ack) {  // check if its an Ack massage
+        char ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &server_addr.sin_addr, ip, sizeof ip);
+        int port = ntohs(server_addr.sin_port);
+        int src_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]);
+        // cast all to string and insert to the list
+        std::string str_ip(ip);
+        list<string> l = {to_string(src_id), str_ip, to_string(port)};
+        this->neighbors.push_back(l);
+        cout << "Connected to Node with ID = " << src_id << endl;
+    }
     delete[] str_msg;
-
-    // act as server and listen to the return message of the other node
-
-    if(bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-        return Nack;
-    }
-    if (listen(sockfd, 10) == 0) {
-	    cout << "Node " << this->ID << " Listening ..." << endl;
-    } else {
-        return Nack;
-    }
-    socklen_t addr_size = sizeof(new_addr);
-    int new_sock = accept(sockfd, (struct sockaddr*) &new_addr, &addr_size);
-    socklen_t len = sizeof(buff); 
-    if (getsockopt(sockfd, IPPROTO_TCP, TCP_CONGESTION, buff, &len) != 0) { 
-        return Nack;
-    } 
-    int valread = read(new_sock, buff, SIZE);  // read the message from buffer
-    cout << "valread: " << valread << endl;
-    
 }
