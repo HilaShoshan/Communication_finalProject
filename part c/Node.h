@@ -9,10 +9,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-// #include "Path.h"
 #include <netinet/in.h>
 #include <netinet/tcp.h> 
-#include<ctype.h>
+#include <ctype.h>
 #include <algorithm>
 #include "select.h"
 
@@ -59,13 +58,14 @@ class Node {
     std::vector<std::vector<int>> paths = {};  // saves all the paths from the current node to other nodes on the network
     std::vector<std::list<std::string>> neighbors = {};  // each list is: {id, ip, port}
     std::vector<int> sockets = {};  // neighbors sockets, corresponding to neighbors vector
-    struct sockaddr_in my_addr, server_addr, new_addr;
+    struct sockaddr_in my_addr, server_addr;
     int listenfd, server_sock, new_sock;
 
     public:
 
     void listen_to_inputs();
     Function do_command(std::string command);
+    Function check_msg(std::string msg, int ret);
 
     // getter
     int getID() {
@@ -93,18 +93,6 @@ class Node {
         printf("Successfuly created a Node with ID = %d, Port = %d, IP = %s\n", 
                                             ID, Port, IP); 
         listen_to_inputs();
-
-        /*
-        char buf[MAX];
-        while(1) {
-            printf("Please enter a command: ");
-            fgets(buf, MAX, stdin);
-            Function response = do_command(buf);
-            if(response == Ack) 
-                printf("Ack\n");
-            else 
-                printf("Nack\n");
-        } */
     }
 
     //destructor 

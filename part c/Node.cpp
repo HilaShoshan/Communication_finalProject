@@ -6,71 +6,59 @@ using namespace std;
 
 /* open a socket, listen to inputs */
 void Node::listen_to_inputs() {
-    int ret;
-    
-    listenfd = socket(AF_INET, SOCK_DGRAM, 0);
-    memset(&my_addr, '0', sizeof(my_addr));
+    int ret, opt = 1;
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);  
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
     my_addr.sin_family = AF_INET;
-    my_addr.sin_addr.s_addr = inet_addr(this->IP);
-    my_addr.sin_port = htons(this->Port); 
-
-    bind(listenfd, (struct sockaddr*)&my_addr, sizeof(my_addr));
-
+    my_addr.sin_addr.s_addr = INADDR_ANY;
+    my_addr.sin_port = htons(this->Port);
+    // Forcefully attaching socket to the port
+    if (bind(listenfd, (struct sockaddr*)&my_addr, sizeof(my_addr)) < 0) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
     printf("adding fd1(%d) to monitoring\n", listenfd);
     add_fd_to_monitoring(listenfd);
-    listen(listenfd, 10);
-
+    if (listen(listenfd, 10) < 0) {  // 10 = the max length to which the queue of pending connections for sockfd may grow
+        perror("listen");
+        exit(EXIT_FAILURE);
+    }
     while(1) {
-        socklen_t addr_size = sizeof(new_addr);
-        new_sock = accept(listenfd, (struct sockaddr*)&new_addr, &addr_size);
-        if (new_sock != -1) {
-            printf("adding fd1(%d) to monitoring\n", new_sock);
-            add_fd_to_monitoring(new_sock);
-        }
-
+        Function response;
         printf("waiting for input...\n");
 	    ret = wait_for_input();
 	    printf("fd: %d is ready. reading...\n", ret);
 	    read(ret, buff, 512);
         if (isalpha(buff[0])) {  // is a command
-            Function response = do_command(buff);
-            if(response == Ack) 
-                printf("Ack\n");
-            else 
-                printf("Nack\n");
+            response = do_command(buff);
         }
         else {  // another message (in the given form, start with id)
-            int dest_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]);
-            int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
-            if (func_id == Function::Connect) {  // check if its a connect message
-                char payload[4];
-                for (int i = 0; i < 4; i++) {  // copy msg_id (of the conect msg) to the payload 
-                    payload[i] = buff[i];  
-                }
-                struct Message msg = {MSG_ID, this->ID, dest_id, 0, Function::Ack, payload};  // connect message
-                MSG_ID++;
-                char* str_msg = make_str_msg(msg);
-                send(new_sock, &str_msg, strlen(str_msg), 0);  
-            }  // if something wrong, send Nack ....
+            response = check_msg(buff, ret);
         }
-        
+        if(response == Ack) printf("Ack\n");
+        else printf("Nack\n");  
     }
 }
 
 
 Function Node::open_tcp_socket(const char* ip, int port) {
-    socklen_t len;
-
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if(server_sock < 0) {
         return Nack;
     }
-    printf("Successfully open TCP socket.\n");
+    printf("Successfully open a TCP socket.\n");
 
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = port;
-    server_addr.sin_addr.s_addr = inet_addr(ip);
+    server_addr.sin_port = htons(port);
+    // server_addr.sin_addr.s_addr = inet_addr(ip);
 
+    if(inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0) {
+        printf("\nInvalid address/ Address not supported \n");
+        return Nack;
+    }
     return Ack; 
 }
 
@@ -149,18 +137,43 @@ Function Node::do_command(string command) {
 }
 
 
-Function Node::myconnect() {
+Function Node::check_msg(string msg, int ret) {
+    int dest_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]);
+    int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
+    if (func_id == Function::Connect) {  // check if its a connect message
+        int addrlen = sizeof(my_addr);
+        if ((new_sock = accept(listenfd, (struct sockaddr*)&my_addr, (socklen_t*)&addrlen)) < 0) {
+            perror("accept");
+            exit(EXIT_FAILURE);
+        }
+        else {
+            cout << "got hereeeeeeeeee" << endl;
+            printf("adding fd1(%d) to monitoring\n", new_sock);
+            add_fd_to_monitoring(new_sock);
+        }
+        char payload[4];
+        for (int i = 0; i < 4; i++) {  // copy msg_id (of the conect msg) to the payload 
+            payload[i] = buff[i];  
+        }
+        struct Message msg = {MSG_ID, this->ID, dest_id, 0, Function::Ack, payload};  // connect message
+        MSG_ID++;
+        char* str_msg = make_str_msg(msg);
+        send(ret, &str_msg, strlen(str_msg), 0);  
+    }  // if something wrong, send Nack ....
+}
 
+
+Function Node::myconnect() {
     int e = connect(server_sock, (struct sockaddr*)&server_addr, sizeof(server_addr));
     if(e == -1) {
-        cout << "shit" << endl;
         return Nack;
     }
-
     char* payload = {nullptr};
     struct Message msg = {MSG_ID, this->ID, 0, 0, Function::Connect, payload};  
     MSG_ID++;
+    cout << "hereeeeeeeeee" << endl;
     char* str_msg = make_str_msg(msg);
+    cout << "hereeee222222222222222" << endl;
     send(server_sock, &str_msg, strlen(str_msg), 0);  
     int valread = read(server_sock, buff, 512);
     int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
