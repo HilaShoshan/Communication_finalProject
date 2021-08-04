@@ -54,8 +54,10 @@ class Node {
     int ID = 0; 
     int Port;
     char* IP;
-    std::vector<std::vector<Node>> paths = {};  // saves all the paths from the current node to other nodes on the network
-    std::vector<std::list<std::string>> neighbors = {};
+
+    std::vector<std::vector<int>> paths = {};  // saves all the paths from the current node to other nodes on the network
+    std::vector<std::list<std::string>> neighbors = {};  // each list is: {id, ip, port}
+    std::vector<int> sockets = {};  // neighbors sockets, corresponding to neighbors vector
     struct sockaddr_in my_addr, server_addr, new_addr;
     int listenfd, server_sock, new_sock;
 

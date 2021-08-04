@@ -4,42 +4,12 @@
 using namespace std;
 
 
-/* get 4 chars (bytes) and return the int */
-int bytesToInt(char a, char b, char c, char d) {
-    int n = 0;
-    n = n + (a & 0x000000ff);
-    n = n + ((b & 0x000000ff) << 8);
-    n = n + ((c & 0x000000ff) << 16);
-    n = n + ((d & 0x000000ff) << 24);
-    return n;
-}
-
-char* make_str_msg (Message msg) {
-    char* bytes = new char[SIZE];
-    int arr[] = {msg.msg_id, msg.src_id, msg.dest_id, msg.num_trailing_msg, msg.func_id};
-    int index = 0;
-    for (int field : arr) {  // convert a int into 4 bytes char*
-        bytes[index] = (field >> 24) & 0xFF;
-        bytes[index+1] = (field >> 16) & 0xFF;
-        bytes[index+2] = (field >> 8) & 0xFF;
-        bytes[index+3] = field & 0xFF;
-        index+=4;
-    }
-    for (char c = *msg.payload; c; c=*++msg.payload) {
-        bytes[index] = c; 
-        index++;
-    }
-    return bytes;
-}
-
-
 /* open a socket, listen to inputs */
 void Node::listen_to_inputs() {
     int ret;
     
     listenfd = socket(AF_INET, SOCK_DGRAM, 0);
     memset(&my_addr, '0', sizeof(my_addr));
-
     my_addr.sin_family = AF_INET;
     my_addr.sin_addr.s_addr = inet_addr(this->IP);
     my_addr.sin_port = htons(this->Port); 
@@ -69,10 +39,10 @@ void Node::listen_to_inputs() {
             else 
                 printf("Nack\n");
         }
-        else {  // another massage (in the given form, start with id)
+        else {  // another message (in the given form, start with id)
             int dest_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]);
             int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
-            if (func_id == Function::Connect) {  // check if its a connect massage
+            if (func_id == Function::Connect) {  // check if its a connect message
                 char payload[4];
                 for (int i = 0; i < 4; i++) {  // copy msg_id (of the conect msg) to the payload 
                     payload[i] = buff[i];  
@@ -141,8 +111,6 @@ Function Node::do_command(string command) {
         }
 
     case _send:
-        return Nack;
-        /* 
         vector<string> results;
         boost::algorithm::split(results, info, boost::is_any_of(","));
         int id = stoi(results[0]);
@@ -163,7 +131,6 @@ Function Node::do_command(string command) {
         }
         return current.send(len, message); 
         // the message should contains the id / ip on a header or whatever  (?)
-        */
     case _route:
         // return route(stoi(info));  // info contains the id only
         return Nack;
@@ -194,7 +161,7 @@ Function Node::myconnect() {
     send(server_sock, &str_msg, strlen(str_msg), 0);  
     int valread = read(server_sock, buff, 512);
     int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
-    if (func_id == Function::Ack) {  // check if its an Ack massage
+    if (func_id == Function::Ack) {  // check if its an Ack message
         char ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &server_addr.sin_addr, ip, sizeof ip);
         int port = ntohs(server_addr.sin_port);
@@ -203,7 +170,37 @@ Function Node::myconnect() {
         std::string str_ip(ip);
         list<string> l = {to_string(src_id), str_ip, to_string(port)};
         this->neighbors.push_back(l);
+        this->sockets.push_back(server_sock);
         cout << "Connected to Node with ID = " << src_id << endl;
     }
     delete[] str_msg;
+}
+
+
+Function Node::discover(int destID) {
+    for(auto &list : neighbors) {
+        if(list[0] == to_string(destID)) {  // the destination node is neighbor of this node
+            vector<int> path = { this->ID, destID };
+            paths.push_back(path);
+            return Ack;
+        }
+    }
+    // send a discover message to all the neighbors
+    vector<int> got_msg = {};  // saves all the nodes that got the discover msg
+    for(int i = 0; i < neighbors.size(); i++) {  // neighbor is a list {id,ip,port} all strings
+        auto neighbor = neighbors[i];
+        int neig_id = stoi(neighbor[0]);
+        if(std::count(got_msg.begin(), got_msg.end(), neig_id) == 0) {  // the neighbor didn't get the message 
+            char* payload = {nullptr};
+            struct Message msg = {MSG_ID, this->ID, neig_id, 0, Function::Discover, payload};
+            MSG_ID++;
+            char* str_msg = make_str_msg(msg);
+            int neig_sock = sockets[i]; 
+            send(neig_sock, &str_msg, strlen(str_msg), 0);  
+            continue;
+        }
+        // if we got here, all the neighbors already got the message
+        return Nack; 
+    }
+
 }
