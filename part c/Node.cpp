@@ -111,6 +111,8 @@ Function Node::do_command(string command) {
         }
 
     case _send:
+        return Nack;
+        /*
         vector<string> results;
         boost::algorithm::split(results, info, boost::is_any_of(","));
         int id = stoi(results[0]);
@@ -131,6 +133,7 @@ Function Node::do_command(string command) {
         }
         return current.send(len, message); 
         // the message should contains the id / ip on a header or whatever  (?)
+        */
     case _route:
         // return route(stoi(info));  // info contains the id only
         return Nack;
@@ -179,7 +182,7 @@ Function Node::myconnect() {
 
 Function Node::discover(int destID) {
     for(auto &list : neighbors) {
-        if(list[0] == to_string(destID)) {  // the destination node is neighbor of this node
+        if(list.front() == to_string(destID)) {  // the destination node is neighbor of this node
             vector<int> path = { this->ID, destID };
             paths.push_back(path);
             return Ack;
@@ -189,7 +192,7 @@ Function Node::discover(int destID) {
     vector<int> got_msg = {};  // saves all the nodes that got the discover msg
     for(int i = 0; i < neighbors.size(); i++) {  // neighbor is a list {id,ip,port} all strings
         auto neighbor = neighbors[i];
-        int neig_id = stoi(neighbor[0]);
+        int neig_id = stoi(neighbor.front());
         if(std::count(got_msg.begin(), got_msg.end(), neig_id) == 0) {  // the neighbor didn't get the message 
             char* payload = {nullptr};
             struct Message msg = {MSG_ID, this->ID, neig_id, 0, Function::Discover, payload};

@@ -13,6 +13,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h> 
 #include<ctype.h>
+#include <algorithm>
 #include "select.h"
 
 #define SIZE 512
@@ -89,8 +90,8 @@ class Node {
 
     //constructor
     Node(char* ip, int port) : IP(ip), Port(port) {
-        printf("Successfuly created a Node with ID = %d, IP = %s, Port = %d\n", 
-                                            ID, IP, Port); 
+        printf("Successfuly created a Node with ID = %d, Port = %d, IP = %s\n", 
+                                            ID, Port, IP); 
         listen_to_inputs();
 
         /*
@@ -110,6 +111,6 @@ class Node {
     ~Node() {
         /* swap the contents of the vector into a temporary 
         that will get destroyed and free the memory */
-        std::vector<std::vector<Node>>().swap(paths);
+        std::vector<std::vector<int>>().swap(paths);
     } 
 };
