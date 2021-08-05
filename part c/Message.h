@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <iostream>
+
 using namespace std;
 
 
@@ -26,20 +27,26 @@ int bytesToInt(char a, char b, char c, char d) {
     return n;
 }
 
-char* make_str_msg (Message msg) {
-    char* bytes = new char[SIZE];
-    char *c=bytes;
-    int arr[5] = {msg.msg_id, msg.src_id, msg.dest_id, msg.num_trailing_msg, msg.func_id};
-    for(int i = 0; i < 5; i++) {
-        int field = arr[i];
-        const char* bytes_int = (to_string(field)).c_str();  // make a 4-bytes char* 
-        const char *d=bytes_int;
-        while(*c++ = *d++);  // copy the int to the bytes array
+void addZero(string& s, int i) {
+    if (i < 10) {
+        s += "000";
     }
-    printf("bytes %s\n", bytes); 
-    /*for (char c = *msg.payload; c; c=*++msg.payload) {
-        bytes[index] = c; 
-        index++;
-    }*/
+    else if (i < 100) {
+        s += "00";
+    }
+    else if (i < 1000) {
+        s += "0";
+    }
+}
+
+
+string make_str_msg (Message msg) {
+    string bytes;
+    int int_fields[5] = {msg.msg_id, msg.src_id, msg.dest_id, msg.num_trailing_msg, msg.func_id};
+    for(int i = 0; i < 5; i++) {
+        addZero(bytes, int_fields[i]);
+        bytes += to_string(int_fields[i]);
+    }
+    bytes += msg.payload;
     return bytes;
 }

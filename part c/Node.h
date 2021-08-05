@@ -5,7 +5,6 @@
 #include <cstring>
 #include <vector>
 #include <list>
-// #include </usr/local/lib/boost/algorithm/string.hpp>
 #include <stdlib.h>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -86,7 +85,7 @@ class Node {
     Function mysend(int len, std::string message);
     Function relay(int nextID, int num_msgs);
     Function peers();
-    // Path getPath(int destID) {}  // returns the path from paths vector if exists, or search one
+    std::vector<int> getPath(int destID);  // returns the path from paths vector if exists, or search one
     Function open_tcp_socket(const char* ip, int port);
 
     //constructor

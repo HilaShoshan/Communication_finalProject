@@ -115,36 +115,36 @@ Function Node::do_command(string command) {
         }
 
     case _send:
-        return Nack;
+        {
+            int id = stoi(info.substr(0, pos));
+            info = info.substr(pos+1);  // override info
+            int len = stoi(info.substr(0, pos));
+            string message = info.substr(pos+1);
+            if (len != message.length()) {
+                return Nack;
+            } 
+            int num_msgs = 0;  // number of the following msgs to be relayed .......
+            std::vector<int> path = getPath(id); 
+            if(path.empty())  // no path has found
+                return Nack;
+        }
         /*
-        vector<string> results;
-        boost::algorithm::split(results, info, boost::is_any_of(","));
-        int id = stoi(results[0]);
-        int len = stoi(results[1]);  // the number of chars on the message
-        string message = results[2];
-        if (len != message.length()) {
-            return Nack;
-        } 
-
-        int num_msgs = 0;  // number of the following msgs to be relayed .......
-
-        Path path = getPath(id); 
         Node current = *this;
         for (i = 1; i < path.getSize()-2; i++) {  // send relay messages until i-2
-            Node next = path.at(i); 
+            int next = path.at(i); 
             current.relay(next.getID(), num_msgs); 
             current = next;
         }
         return current.send(len, message); 
         // the message should contains the id / ip on a header or whatever  (?)
         */
+        
     case _route:
         // return route(stoi(info));  // info contains the id only
         return Nack;
             
     case _peers:
-        // return peers();
-        return Nack;
+        return peers();
     
     default:
         cout << err_msg << endl;
@@ -173,7 +173,7 @@ Function Node::check_msg(string msg, int ret) {
         }
         struct Message msg = {MSG_ID, this->ID, dest_id, 0, Function::Ack, payload};  // connect message
         MSG_ID++;
-        char* str_msg = make_str_msg(msg);
+        const char* str_msg = make_str_msg(msg).c_str();
         send(ret, &str_msg, strlen(str_msg), 0);  
     }  // if something wrong, send Nack ....
     return Nack;
@@ -188,7 +188,7 @@ Function Node::myconnect() {
     char* payload = {nullptr};
     struct Message msg = {MSG_ID, this->ID, 0, 0, Function::Connect, payload};  
     MSG_ID++;
-    char* str_msg = make_str_msg(msg);
+    const char* str_msg = make_str_msg(msg).c_str();
     cout << "hereeee222222222222222" << endl;
     send(server_sock, &str_msg, strlen(str_msg), 0);  
     int valread = read(server_sock, buff, 512);
@@ -210,6 +210,19 @@ Function Node::myconnect() {
 }
 
 
+vector<int> Node::getPath(int destID) {
+    for(vector<int> &path : paths) {
+        if(path.back() == destID)  // this is a path to the destination node
+            return path;
+    }
+    // a path to destination does not exist yet
+    if(discover(destID) == Ack)
+        return paths.back();  // the last path is the last one that added 
+    else 
+        return vector<int>();
+}
+
+
 Function Node::discover(int destID) {
     for(auto &list : neighbors) {
         if(list.front() == to_string(destID)) {  // the destination node is neighbor of this node
@@ -227,7 +240,7 @@ Function Node::discover(int destID) {
             char* payload = {nullptr};
             struct Message msg = {MSG_ID, this->ID, neig_id, 0, Function::Discover, payload};
             MSG_ID++;
-            char* str_msg = make_str_msg(msg);
+            const char* str_msg = make_str_msg(msg).c_str();
             int neig_sock = sockets[i]; 
             send(neig_sock, &str_msg, strlen(str_msg), 0);  
             continue;
@@ -237,6 +250,8 @@ Function Node::discover(int destID) {
     }
    return Nack;     
 }
-Function Node:: peers(){
+
+
+Function Node::peers() {
 
 }
