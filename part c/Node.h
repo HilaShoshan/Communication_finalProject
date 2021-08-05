@@ -43,7 +43,8 @@ enum Command {
     _connect,
     _send,
     _route,
-    _peers
+    _peers,
+    illegle_command
 };
 
 

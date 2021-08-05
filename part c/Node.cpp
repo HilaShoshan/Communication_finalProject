@@ -34,6 +34,7 @@ void Node::listen_to_inputs() {
 	    read(ret, buff, 512);
         if (isalpha(buff[0])) {  // is a command
             response = do_command(buff);
+            //memset(buff, 0, sizeof buff);
         }
         else {  // another message (in the given form, start with id)
             response = check_msg(buff, ret);
@@ -69,6 +70,7 @@ Command hashit (std::string const& inString) {
     if (inString == "send") return _send;
     if (inString == "route") return _route;
     if (inString == "peers") return _peers;
+    return illegle_command;
 }
 
 
@@ -174,6 +176,7 @@ Function Node::check_msg(string msg, int ret) {
         char* str_msg = make_str_msg(msg);
         send(ret, &str_msg, strlen(str_msg), 0);  
     }  // if something wrong, send Nack ....
+    return Nack;
 }
 
 
@@ -203,6 +206,7 @@ Function Node::myconnect() {
         cout << "Connected to Node with ID = " << src_id << endl;
     }
     delete[] str_msg;
+    return Nack;
 }
 
 
@@ -231,5 +235,8 @@ Function Node::discover(int destID) {
         // if we got here, all the neighbors already got the message
         return Nack; 
     }
+   return Nack;     
+}
+Function Node:: peers(){
 
 }
