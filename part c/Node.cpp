@@ -253,5 +253,8 @@ Function Node::discover(int destID) {
 
 
 Function Node::peers() {
-
+    std::copy(neighbors[0].begin(),
+      neighbors[0].end(),
+      std::ostream_iterator<std::string>(std::cout + "--> "));
+      return ACK;
 }
