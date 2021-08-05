@@ -13,7 +13,7 @@ struct Message {
     int dest_id = 0;
     int num_trailing_msg = 0;
     int func_id = 0;
-    char* payload = {nullptr};
+    char* payload = "";
 };
 
 
@@ -43,13 +43,17 @@ void addZero(string& s, int i) {
 string make_str_msg (Message msg) {
     string bytes;
     int int_fields[5] = {msg.msg_id, msg.src_id, msg.dest_id, msg.num_trailing_msg, msg.func_id};
-    printf("before loopppp");
     for(int i = 0; i < 5; i++) {
         addZero(bytes, int_fields[i]);
         bytes += to_string(int_fields[i]);
         cout << "bytes: " << bytes << endl;
     }
-    printf("end looppppppppppppppppp");
+   if ((msg.payload != NULL) && (msg.payload[0] == '\0')) {
+   printf("payload is empty and the message is : \n");
+   return bytes;
+   }
+   else{
     bytes += msg.payload;
     return bytes;
+   }
 }

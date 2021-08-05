@@ -34,7 +34,7 @@ void Node::listen_to_inputs() {
 	    read(ret, buff, 512);
         if (isalpha(buff[0])) {  // is a command
             response = do_command(buff);
-            //memset(buff, 0, sizeof buff);
+            memset(buff, 0, sizeof buff);
         }
         else {  // another message (in the given form, start with id)
             response = check_msg(buff, ret);
@@ -185,7 +185,7 @@ Function Node::myconnect() {
     if(e == -1) {
         return Nack;
     }
-    char* payload = {nullptr};
+    char* payload = "";
     struct Message msg = {MSG_ID, this->ID, 0, 0, Function::Connect, payload};  
     MSG_ID++;
     cout << "hereeeeeeeeeee" << endl;
@@ -238,7 +238,7 @@ Function Node::discover(int destID) {
         auto neighbor = neighbors[i];
         int neig_id = stoi(neighbor.front());
         if(std::count(got_msg.begin(), got_msg.end(), neig_id) == 0) {  // the neighbor didn't get the message 
-            char* payload = {nullptr};
+            char* payload = "";
             struct Message msg = {MSG_ID, this->ID, neig_id, 0, Function::Discover, payload};
             MSG_ID++;
             const char* str_msg = make_str_msg(msg).c_str();
@@ -254,8 +254,9 @@ Function Node::discover(int destID) {
 
 
 Function Node::peers() {
-    std::copy(neighbors[0].begin(),
-      neighbors[0].end(),
-      std::ostream_iterator<std::string>(std::cout + "--> "));
-      return ACK;
+//     std::copy(neighbors[0].begin(),
+//       neighbors[0].end(),
+//       std::ostream_iterator<std::string>(std::cout + "--> "));
+//       return Ack;
+return Nack;
 }
