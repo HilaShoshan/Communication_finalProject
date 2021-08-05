@@ -188,6 +188,7 @@ Function Node::myconnect() {
     char* payload = {nullptr};
     struct Message msg = {MSG_ID, this->ID, 0, 0, Function::Connect, payload};  
     MSG_ID++;
+    cout << "hereeeeeeeeeee" << endl;
     const char* str_msg = make_str_msg(msg).c_str();
     cout << "hereeee222222222222222" << endl;
     send(server_sock, &str_msg, strlen(str_msg), 0);  

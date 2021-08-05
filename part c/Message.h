@@ -43,10 +43,13 @@ void addZero(string& s, int i) {
 string make_str_msg (Message msg) {
     string bytes;
     int int_fields[5] = {msg.msg_id, msg.src_id, msg.dest_id, msg.num_trailing_msg, msg.func_id};
+    printf("before loopppp");
     for(int i = 0; i < 5; i++) {
         addZero(bytes, int_fields[i]);
         bytes += to_string(int_fields[i]);
+        cout << "bytes: " << bytes << endl;
     }
+    printf("end looppppppppppppppppp");
     bytes += msg.payload;
     return bytes;
 }
