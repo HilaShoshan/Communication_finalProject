@@ -7,7 +7,6 @@ using namespace std;
 
 
 struct Message {
-
     int msg_id = 0;
     int src_id = 0;
     int dest_id = 0;
@@ -29,18 +28,18 @@ int bytesToInt(char a, char b, char c, char d) {
 
 char* make_str_msg (Message msg) {
     char* bytes = new char[SIZE];
-    int arr[] = {msg.msg_id, msg.src_id, msg.dest_id, msg.num_trailing_msg, msg.func_id};
-    int index = 0;
-    for (int field : arr) {  // convert a int into 4 bytes char*
-        bytes[index] = (field >> 24) & 0xFF;
-        bytes[index+1] = (field >> 16) & 0xFF;
-        bytes[index+2] = (field >> 8) & 0xFF;
-        bytes[index+3] = field & 0xFF;
-        index+=4;
+    char *c=bytes;
+    int arr[5] = {msg.msg_id, msg.src_id, msg.dest_id, msg.num_trailing_msg, msg.func_id};
+    for(int i = 0; i < 5; i++) {
+        int field = arr[i];
+        const char* bytes_int = (to_string(field)).c_str();  // make a 4-bytes char* 
+        const char *d=bytes_int;
+        while(*c++ = *d++);  // copy the int to the bytes array
     }
-    for (char c = *msg.payload; c; c=*++msg.payload) {
+    printf("bytes %s\n", bytes); 
+    /*for (char c = *msg.payload; c; c=*++msg.payload) {
         bytes[index] = c; 
         index++;
-    }
+    }*/
     return bytes;
 }

@@ -80,22 +80,36 @@ Function Node::do_command(string command) {
     string info = command.substr(pos+1);  // after the ","
     char* char_arr;
 
+    string err_msg = "Wrong command syntax, please try again";
+
     switch (hashit(command_name)) {
 
     case _setid:
-        setID(stoi(info));  // info contains the id only
-        return Ack;
+        try {
+            setID(stoi(info));  // info contains the id only
+            return Ack;
+        }
+        catch(const std::exception& e) {
+            cout << err_msg << endl;
+            return Nack;
+        }
 
     case _connect:
         {
-            pos2 = info.find(":");
-            string ip = info.substr(0, pos2);
-            char_arr = &ip[0];
-            string port = info.substr(pos2+1); 
-            if (open_tcp_socket(char_arr, stoi(port)) == Nack) {
-                return Nack; 
+            try {
+                pos2 = info.find(":");
+                string ip = info.substr(0, pos2);
+                char_arr = &ip[0];
+                string port = info.substr(pos2+1); 
+                if (open_tcp_socket(char_arr, stoi(port)) == Nack) {
+                    return Nack; 
+                }
+                return myconnect();  
             }
-            return myconnect();  
+            catch(const std::exception& e) {
+                cout << err_msg << endl;
+                return Nack;
+            }
         }
 
     case _send:
@@ -131,7 +145,7 @@ Function Node::do_command(string command) {
         return Nack;
     
     default:
-        cout << "Wrong command syntax, please try again" << endl;
+        cout << err_msg << endl;
         return Nack;
     }
 }
@@ -171,7 +185,6 @@ Function Node::myconnect() {
     char* payload = {nullptr};
     struct Message msg = {MSG_ID, this->ID, 0, 0, Function::Connect, payload};  
     MSG_ID++;
-    cout << "hereeeeeeeeee" << endl;
     char* str_msg = make_str_msg(msg);
     cout << "hereeee222222222222222" << endl;
     send(server_sock, &str_msg, strlen(str_msg), 0);  
