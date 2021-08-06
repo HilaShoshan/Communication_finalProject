@@ -32,12 +32,13 @@ void Node::listen_to_inputs() {
 	    ret = wait_for_input();
 	    printf("fd: %d is ready. reading...\n", ret);
 	    read(ret, buff, 512);
-        cout << "buff is: " << buff << endl;
-        if (isalpha(buff[0])) {  // is a command
+        if (ret == 0) {  // is a command from the keyboard
+            // cout << "keyboard, buff = " << buff << endl;
             response = do_command(buff);
             memset(buff, 0, sizeof buff);
         }
-        else if (strlen(buff) == 0) {  
+        else if (ret == listenfd) {  // someone wants to connect me  
+            // cout << "listenfd, buff = " << buff << endl;
             int addrlen = sizeof(my_addr);
             if ((new_sock = accept(listenfd, (struct sockaddr*)&my_addr, (socklen_t*)&addrlen)) < 0) {
                 response = Nack;
@@ -47,8 +48,11 @@ void Node::listen_to_inputs() {
             response = Ack;
         }
         else {  // another message (in the given form, start with id)
-            response = check_msg(buff, ret);
-            memset(buff, 0, sizeof buff);
+            if (strlen(buff) != 0) {  // check if the node has disconnected
+                // cout << "else, buff = " << buff << endl;
+                response = check_msg(buff, ret);
+                memset(buff, 0, sizeof buff);
+            }
         }
         if(response == Ack) printf("Ack\n");
         else printf("Nack\n");  
@@ -166,29 +170,27 @@ Function Node::do_command(string command) {
 
 
 Function Node::check_msg(string msg, int ret) {
-    // cout << "the message to check : " << msg << endl;
-    // int dest_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]);
-    // int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
-    // if (func_id == Function::Connect) {  // check if its a connect message
-    //     // int addrlen = sizeof(my_addr);
-    //     // if ((new_sock = accept(listenfd, (struct sockaddr*)&my_addr, (socklen_t*)&addrlen)) < 0) {
-    //     //     perror("accept");
-    //     //     exit(EXIT_FAILURE);
-    //     // }
-    //     else {
-    //         cout << "got hereeeeeeeeee" << endl;
-    //         printf("adding fd1(%d) to monitoring\n", new_sock);
-    //         add_fd_to_monitoring(new_sock);
-    //     }
-    //     char payload[4];
-    //     for (int i = 0; i < 4; i++) {  // copy msg_id (of the conect msg) to the payload 
-    //         payload[i] = buff[i];  
-    //     }
-    //     struct Message msg = {MSG_ID, this->ID, dest_id, 0, Function::Ack, payload};  // connect message
-    //     MSG_ID++;
-    //     const char* str_msg = make_str_msg(msg).c_str();
-    //     send(ret, &str_msg, strlen(str_msg), 0);  
-    // }  // if something wrong, send Nack ....
+    int src_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]); 
+    int dest_id = bytesToInt(buff[8], buff[9], buff[10], buff[11]);  
+    int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
+    if (func_id == Function::Connect) {  // check if its a connect message
+        char payload[4];
+        for (int i = 0; i < 4; i++) {  // copy msg_id (of the connect msg) to the payload 
+            payload[i] = buff[i];      // check it .... &*(%#)
+        }
+        Function response = Ack;
+        if (dest_id != this->ID)  // the message is not for me
+            response = Nack;
+        struct Message msg = {MSG_ID, this->ID, src_id, 0, response, payload};  // ack ot nack message
+        MSG_ID++;
+        string str_msg = make_str_msg(msg);
+        const char* chars_msg = str_msg.c_str();
+        if (send(ret, chars_msg, str_msg.length(), 0) == -1) {
+            return Nack;
+        }
+        // save the id, ip and port of the node (?)
+        return Ack; 
+    } 
     return Nack;
 }
 
@@ -203,15 +205,17 @@ Function Node::myconnect() {
     const char* payload = "";
     struct Message msg = {MSG_ID, this->ID, 0, 0, Function::Connect, payload};  
     MSG_ID++;
-    const char* str_msg = make_str_msg(msg).c_str();
-    if (send(server_sock, &str_msg, strlen(str_msg), 0) == -1) {
+    string str_msg = make_str_msg(msg);
+    const char* chars_msg = str_msg.c_str();
+    if (send(server_sock, chars_msg, str_msg.length(), 0) == -1) {
         perror("send");
     }
     int valread = read(server_sock, buff, 512);
+    // cout << "the message is : " << buff << endl;
     int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]); 
     if (func_id == Function::Ack) {  // check if its an Ack message
         char ip[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &server_addr.sin_addr, ip, sizeof ip);
+        inet_ntop(AF_INET, &server_addr.sin_addr, ip, sizeof(ip));
         int port = ntohs(server_addr.sin_port);
         int src_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]);
         // cast all to string and insert to the list
@@ -220,6 +224,7 @@ Function Node::myconnect() {
         this->neighbors.push_back(l);
         this->sockets.push_back(server_sock);
         cout << "Connected to Node with ID = " << src_id << endl;
+        return Ack;
     }
     return Nack;
 }
@@ -255,9 +260,11 @@ Function Node::discover(int destID) {
             const char* payload = "";
             struct Message msg = {MSG_ID, this->ID, neig_id, 0, Function::Discover, payload};
             MSG_ID++;
-            const char* str_msg = make_str_msg(msg).c_str();
-            int neig_sock = sockets[i]; 
-            send(neig_sock, &str_msg, strlen(str_msg), 0);  
+            string str_msg = make_str_msg(msg);
+            const char* chars_msg = str_msg.c_str();
+            if (send(server_sock, chars_msg, str_msg.length(), 0) == -1) {
+                perror("send");
+            } 
             continue;
         }
         // if we got here, all the neighbors already got the message
