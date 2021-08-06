@@ -43,7 +43,7 @@ enum Command {
     _send,
     _route,
     _peers,
-    illegle_command
+    _illegle_command
 };
 
 
@@ -75,7 +75,6 @@ class Node {
     // setter
     void setID(int id) {
         this -> ID = id; 
-        printf("Set node ID to: %d\n", ID);
     }
 
     // command & helper functions

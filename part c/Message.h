@@ -13,20 +13,23 @@ struct Message {
     int dest_id = 0;
     int num_trailing_msg = 0;
     int func_id = 0;
-    char* payload = "";
+    const char* payload = "";
 };
+
+
+/* In all of the following functions we assume that the network is relatively small, 
+meaning there are no more than 9999 nodes / messages */
 
 
 /* get 4 chars (bytes) and return the int */
 int bytesToInt(char a, char b, char c, char d) {
-    int n = 0;
-    n = n + (a & 0x000000ff);
-    n = n + ((b & 0x000000ff) << 8);
-    n = n + ((c & 0x000000ff) << 16);
-    n = n + ((d & 0x000000ff) << 24);
-    return n;
+    char num_chars[] = { a, b, c, d }; 
+    string num_str(num_chars);
+    return stoi(num_str);
 }
 
+
+/* add zeros at the beginning of the number, according to it's length */
 void addZero(string& s, int i) {
     if (i < 10) {
         s += "000";
@@ -40,20 +43,19 @@ void addZero(string& s, int i) {
 }
 
 
+/* get a message and make a string that represents it (to send it between nodes) */
 string make_str_msg (Message msg) {
     string bytes;
     int int_fields[5] = {msg.msg_id, msg.src_id, msg.dest_id, msg.num_trailing_msg, msg.func_id};
     for(int i = 0; i < 5; i++) {
         addZero(bytes, int_fields[i]);
         bytes += to_string(int_fields[i]);
-        cout << "bytes: " << bytes << endl;
     }
-   if ((msg.payload != NULL) && (msg.payload[0] == '\0')) {
-   printf("payload is empty and the message is : \n");
-   return bytes;
-   }
-   else{
-    bytes += msg.payload;
-    return bytes;
-   }
+    if ((msg.payload != NULL) && (msg.payload[0] == '\0')) {
+        return bytes;
+    }
+    else {
+        bytes += msg.payload;
+        return bytes;
+    }
 }
