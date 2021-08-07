@@ -132,14 +132,15 @@ Function Node::do_command(string command) {
 
     case _send:
         {
+            pos = info.find(",");
             int id = stoi(info.substr(0, pos));
             info = info.substr(pos+1);  // override info
+            pos = info.find(",");
             int len = stoi(info.substr(0, pos));
             string message = info.substr(pos+1);
-            if (len != message.length()) {
+            if (len != message.length()-1) {
                 return Nack;
             } 
-            cout << "params: id = " << id << " len = " << len << " message = " << message << endl;
             std::vector<int> path = getPath(id); 
             if(path.empty())  // no path has found
                 return Nack;
@@ -244,6 +245,17 @@ vector<int> Node::getPath(int destID) {
 }
 
 
+void Node::addThePath(int destID, string buff) {
+    vector<int> path = {};
+    for(int i = 20; i < buff.length(); i+=4) {  // move on the payload
+        int next = bytesToInt(buff[i], buff[i+1], buff[i+2], buff[i+3]); 
+        path.push_back(next);
+        if(next == destID) break;
+    }
+    paths.push_back(path);
+}
+
+
 /* only the first node (the one who want to sent the message) uses this */
 Function Node::discover(int destID) {
     for(auto &list : neighbors) {
@@ -253,36 +265,63 @@ Function Node::discover(int destID) {
             return Ack;
         }
     }
-    string bytes; 
-    addZero(bytes, this->ID);
-    bytes = bytes + to_string(this->ID) + " ";
-
-    const char* payload = bytes.c_str();  // add the id of the current node to payload
-    return recursive_discover(destID, payload);   // sendind discover message to neighbors
-}
-
-
-Function Node::recursive_discover(int destID, const char* payload) {
     // send a discover message to all the neighbors (that are not in the payload)
     for(int i = 0; i < neighbors.size(); i++) {  // neighbor is a list {id,ip,port} all strings
         auto neighbor = neighbors[i];
         int neig_id = stoi(neighbor.front());  // the id is the first one on the list
-        // if(std::count(got_msg.begin(), got_msg.end(), neig_id) == 0) {  // the neighbor didn't get the message 
-        //     const char* payload = "";
-        //     struct Message msg = {MSG_ID, this->ID, neig_id, 0, Function::Discover, payload};
-        //     MSG_ID++;
-        //     string str_msg = make_str_msg(msg);
-        //     const char* chars_msg = str_msg.c_str();
-        //     if (send(server_sock, chars_msg, str_msg.length(), 0) == -1) {
-        //         perror("send");
-        //     } 
-        //     continue;
-        // }
-        // if we got here, all the neighbors already got the message
-        return Nack; 
+        string bytes; 
+        addZero(bytes, this->ID);
+        bytes = bytes + to_string(this->ID);  // add the id of the current node to payload
+        int trial = ceil(bytes.length()/492);  // the number of message (pieces) to send 
+        for (unsigned j = 0; j < bytes.length(); j += 492) {
+            const char* payload = bytes.substr(j, 492).c_str();  
+            struct Message msg = {MSG_ID, this->ID, neig_id, trial-1, Function::Discover, payload};
+            MSG_ID++;
+            string str_msg = make_str_msg(msg);
+            const char* chars_msg = str_msg.c_str();
+            if (send(sockets[i], chars_msg, str_msg.length(), 0) == -1) {
+                perror("send");
+            }
+        }
+        read(sockets[i], buff, 512);
+        int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]); 
+        if (func_id == Function::Ack) {  // check if its an Ack message --> path has found!
+            // maybe add here and check if it's the shortest path
+            addThePath(destID, buff);
+            return Ack;
+        }
     }
-   return Nack;
+    return Nack; 
+}
 
+
+Function Node::recursive_discover(int destID, vector<int> &got_msg) {
+//     for(auto &list : neighbors) {
+//         if(list.front() == to_string(destID)) {  // the destination node is neighbor of this node
+//             vector<int> vec = { this->ID, destID };
+//             got_msg.insert(got_msg.end(), vec.begin(), vec.end());  // concat got_msg with vec
+//             paths.push_back(got_msg);
+            
+//         }
+//     // send a discover message to all the neighbors (that are not in the payload)
+//     for(int i = 0; i < neighbors.size(); i++) {  // neighbor is a list {id,ip,port} all strings
+//         auto neighbor = neighbors[i];
+//         int neig_id = stoi(neighbor.front());  // the id is the first one on the list
+//         if(std::count(got_msg.begin(), got_msg.end(), neig_id) == 0) {  // the neighbor didn't get the message 
+//             const char* payload = "";
+//             struct Message msg = {MSG_ID, this->ID, neig_id, 0, Function::Discover, payload};
+//             MSG_ID++;
+//             string str_msg = make_str_msg(msg);
+//             const char* chars_msg = str_msg.c_str();
+//             if (send(server_sock, chars_msg, str_msg.length(), 0) == -1) {
+//                 perror("send");
+//             } 
+//             continue;
+//         }
+//         // if we got here, all the neighbors already got the message
+//         return Nack; 
+//     }
+//    return Nack;
 }
 
 
@@ -291,5 +330,5 @@ Function Node::peers() {
 //       neighbors[0].end(),
 //       std::ostream_iterator<std::string>(std::cout + "--> "));
 //       return Ack;
-return Nack;
+    return Nack;
 }

@@ -12,6 +12,7 @@
 #include <netinet/tcp.h> 
 #include <ctype.h>
 #include <algorithm>
+#include <math.h>
 #include "select.h"
 
 #define SIZE 512
@@ -79,12 +80,13 @@ class Node {
     // command & helper functions
     Function myconnect();
     Function discover(int destID);
-    Function recursive_discover(int destID, const char* payload);
+    Function recursive_discover(int destID, std::vector<int> &got_msg);
     Function route(int discover_message_id, int ans_len, std::vector<int> nodes);
     Function mysend(int len, std::string message);
     Function relay(int nextID, int num_msgs);
     Function peers();
     std::vector<int> getPath(int destID);  // returns the path from paths vector if exists, or search one
+    void addThePath(int destID, std::string buff);
     Function open_tcp_socket(const char* ip, int port);
 
     //constructor
