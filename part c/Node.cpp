@@ -28,13 +28,15 @@ void Node::listen_to_inputs() {
         exit(EXIT_FAILURE);
     }
     vector<int> disconnected = {};
+    bool flag = true;
     while(1) {
         Function response;
+        if (flag) printf("waiting for input...\n");
 	    ret = wait_for_input();
         if (count(disconnected.begin(), disconnected.end(), ret) || (ret == -1)) {  // the socket is irrelevant
+            flag = false; 
             continue;
         }
-        printf("waiting for input...\n");
 	    printf("fd: %d is ready. reading...\n", ret);
 	    int valread = read(ret, buff, SIZE);
         if (ret == 0) {  // is a command from the keyboard
@@ -46,11 +48,8 @@ void Node::listen_to_inputs() {
             // cout << "listenfd, buff = " << buff << endl;
             int addrlen = sizeof(my_addr);
             if ((new_sock = accept(listenfd, (struct sockaddr*)&my_addr, (socklen_t*)&addrlen)) < 0) {
-                cout << "new_sock=" << new_sock << endl; 
-                cout << "error in accept" << endl;
                 response = Nack;
             }
-            cout << "new_sock=" << new_sock << endl; 
             printf("adding fd1(%d) to monitoring\n", new_sock);
             add_fd_to_monitoring(new_sock);
             response = Ack;
@@ -157,12 +156,16 @@ Function Node::do_command(string command) {
             pos = info.find(",");
             int len = stoi(info.substr(0, pos));
             string message = info.substr(pos+1);
-            if (len != message.length()-1) {
+            if (len != message.length()) {
                 return Nack;
             } 
             std::vector<int> path = getPath(id); 
+            cout << "path length=" << path.size() << endl;
             if(path.empty())  // no path has found
                 return Nack;
+            for (int i = 0; i < path.size(); i++) {
+                cout << path.at(i) << " ";
+            }
         }
         /*
         int num_msgs = 0;  // number of the following msgs to be relayed .......
