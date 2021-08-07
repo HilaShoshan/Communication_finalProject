@@ -352,9 +352,16 @@ Function Node::discover(int destID, int father, string payload_str) {
 
 
 Function Node::peers() {
-//     std::copy(neighbors[0].begin(),
-//       neighbors[0].end(),
-//       std::ostream_iterator<std::string>(std::cout + "--> "));
-//       return Ack;
-    return Nack;
+    int n = neighbors[0].size();
+    if (n != 0){
+         for(int i = 0; i < neighbors.size(); i++) {  
+         auto neighbor = neighbors[i];
+         int neig_id = stoi(neighbor.front());  // the id is the first one from the id list
+         std::cout << neig_id  << "-->";
+   }      
+return Ack;
+    }
+else{
+    return Nack; 
+}
 }
