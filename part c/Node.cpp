@@ -37,6 +37,7 @@ void Node::listen_to_inputs() {
             flag = false; 
             continue;
         }
+        flag = true;
 	    printf("fd: %d is ready. reading...\n", ret);
 	    int valread = read(ret, buff, SIZE);
         if (ret == 0) {  // is a command from the keyboard
@@ -60,6 +61,7 @@ void Node::listen_to_inputs() {
                 int index = getIndexByVal(sockets, ret);
                 disconnect(index);
                 disconnected.push_back(ret); 
+                response = Ack;
             } 
             else {
                 response = check_msg(buff, ret);
@@ -119,7 +121,6 @@ Function Node::do_command(string command) {
     string err_msg = "Wrong command syntax, please try again";
 
     switch (hashit(command_name)) {
-
     case _setid:
         try {
             setID(stoi(info));  // info contains the id only
@@ -129,7 +130,6 @@ Function Node::do_command(string command) {
             cout << err_msg << endl;
             return Nack;
         }
-
     case _connect:
         {
             try {
@@ -147,7 +147,6 @@ Function Node::do_command(string command) {
                 return Nack;
             }
         }
-
     case _send:
         {
             pos = info.find(",");
@@ -156,16 +155,12 @@ Function Node::do_command(string command) {
             pos = info.find(",");
             int len = stoi(info.substr(0, pos));
             string message = info.substr(pos+1);
-            if (len != message.length()) {
+            if (len != message.length()-1) {
                 return Nack;
             } 
             std::vector<int> path = getPath(id); 
-            cout << "path length=" << path.size() << endl;
             if(path.empty())  // no path has found
                 return Nack;
-            for (int i = 0; i < path.size(); i++) {
-                cout << path.at(i) << " ";
-            }
         }
         /*
         int num_msgs = 0;  // number of the following msgs to be relayed .......
@@ -178,14 +173,11 @@ Function Node::do_command(string command) {
         return current.send(len, message); 
         // the message should contains the id / ip on a header or whatever  (?)
         */
-        
     case _route:
         // return route(stoi(info));  // info contains the id only
-        return Nack;
-            
+        return Nack;       
     case _peers:
         return peers();
-    
     default:
         cout << err_msg << endl;
         return Nack;
@@ -194,6 +186,7 @@ Function Node::do_command(string command) {
 
 
 Function Node::check_msg(string msg, int ret) {
+    cout << "check msg: " << msg << endl;
     string buff_str(buff);
     int src_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]); 
     int dest_id = bytesToInt(buff[8], buff[9], buff[10], buff[11]);  
@@ -321,7 +314,7 @@ Function Node::discover(int destID, int father, string payload_str) {
     for(int i = 0; i < neighbors.size(); i++) {  // neighbor is a list {id,ip,port}, all strings
         auto neighbor = neighbors[i];
         int neig_id = stoi(neighbor.front());  // the id is the first one on the list
-        int trial = ceil(payload_str.length()/492);  // the number of message (pieces) to send 
+        int trial = ceil(payload_str.length()/492.0);  // the number of message (pieces) to send 
         for (unsigned j = 0; j < payload_str.length(); j += 492) {
             const char* payload = payload_str.substr(j, 492).c_str();  
             struct Message msg = {MSG_ID, this->ID, neig_id, trial-1, Function::Discover, payload};
