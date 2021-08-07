@@ -79,8 +79,7 @@ class Node {
 
     // command & helper functions
     Function myconnect();
-    Function discover(int destID);
-    Function recursive_discover(int destID, std::vector<int> &got_msg);
+    Function discover(int destID, int father, string payload);
     Function route(int discover_message_id, int ans_len, std::vector<int> nodes);
     Function mysend(int len, std::string message);
     Function relay(int nextID, int num_msgs);
