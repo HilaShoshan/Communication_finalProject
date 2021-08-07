@@ -357,7 +357,7 @@ Function Node::peers() {
          for(int i = 0; i < neighbors.size(); i++) {  
          auto neighbor = neighbors[i];
          int neig_id = stoi(neighbor.front());  // the id is the first one from the id list
-         std::cout << neig_id  << "-->";
+         std::cout << neig_id  << ",";
    }      
 return Ack;
     }
@@ -365,3 +365,19 @@ else{
     return Nack; 
 }
 }
+
+ //std::vector<std::vector<int>> paths = {};  // saves all the paths from the current node to other nodes on the network
+
+Function route2(int node_id){
+    // vector<int>::iterator it = find( paths.begin(), paths.end(), node_id) ; //check  if node_id  contains in the paths
+    // if (it != paths.end()){
+    // for (int i =0; i< paths.size();i++){
+    //      auto path = paths[i];
+    //      int way = paths.front();
+    //      std::cout << way  << ",";
+    // }  
+    // return Ack;
+    // }else{
+        return Nack;
+    }
+
