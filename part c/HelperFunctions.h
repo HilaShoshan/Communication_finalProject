@@ -15,12 +15,22 @@ Command hashit (std::string const& inString) {
 }
 
 
-/* get the index of an element in vector */
-int getIndex(vector<list<string>> v, int id) {
+/* get the index of an element in vector by the id of the node */
+int getIndexByID(vector<list<string>> v, int id) {
     int id2; 
     for (int i = 0; i < v.size(); i++) {
         id2 = stoi(v[i].front());  // the id is the first one on the list
         if (id == id2) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+
+int getIndexByVal(vector<int> v, int val) {
+    for (int i = 0; i < v.size(); i++) {
+        if (v[i] == val) {
             return i;
         }
     }

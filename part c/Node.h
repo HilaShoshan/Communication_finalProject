@@ -87,6 +87,7 @@ class Node {
     std::vector<int> getPath(int destID);  // returns the path from paths vector if exists, or search one
     void addThePath(int destID, std::string buff);
     Function open_tcp_socket(const char* ip, int port);
+    void disconnect(int index);  // in the case of disconnected node
 
     //constructor
     Node(char* ip, int port) : IP(ip), Port(port) {

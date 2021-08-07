@@ -27,12 +27,16 @@ void Node::listen_to_inputs() {
         perror("listen");
         exit(EXIT_FAILURE);
     }
+    vector<int> disconnected = {};
     while(1) {
         Function response;
-        printf("waiting for input...\n");
 	    ret = wait_for_input();
+        if (count(disconnected.begin(), disconnected.end(), ret)) {  // the socket is irrelevant
+            continue;
+        }
+        printf("waiting for input...\n");
 	    printf("fd: %d is ready. reading...\n", ret);
-	    read(ret, buff, SIZE);
+	    int valread = read(ret, buff, SIZE);
         if (ret == 0) {  // is a command from the keyboard
             // cout << "keyboard, buff = " << buff << endl;
             response = do_command(buff);
@@ -49,14 +53,36 @@ void Node::listen_to_inputs() {
             response = Ack;
         }
         else {  // another message (in the given form, start with id)
-            if (strlen(buff) != 0) {  // check if the node has disconnected
-                // cout << "else, buff = " << buff << endl;
+            // cout << "else, buff = " << buff << endl;
+            if (valread == 0) {  // check if the node has disconnected
+                int index = getIndexByVal(sockets, ret);
+                disconnect(index);
+                disconnected.push_back(ret); 
+            } 
+            else {
                 response = check_msg(buff, ret);
                 memset(buff, 0, sizeof buff);
             }
         }
         if(response == Ack) printf("Ack\n");
         else printf("Nack\n");  
+    }
+}
+
+
+void Node::disconnect(int index) {
+    cout << "some node has disconnected" << endl;
+    vector<int>::iterator it = sockets.begin();
+    sockets.erase(it+index);
+    auto neighbor = neighbors[index];
+    int id = stoi(neighbor.front());
+    vector<list<string>>::iterator it1 = neighbors.begin();
+    neighbors.erase(it1+index);
+    vector<vector<int>>::iterator it2 = paths.begin();
+    for(int i = 0; i < paths.size(); i++) {
+        if(paths[i].back() == id) {  // this is a path to the disconnected node
+            paths.erase(it2+i);
+        }
     }
 }
 
@@ -317,7 +343,7 @@ Function Node::discover(int destID, int father, string payload_str) {
                 MSG_ID++;
                 string str_msg = make_str_msg(msg);
                 const char* chars_msg = str_msg.c_str();
-                int index = getIndex(neighbors, father);
+                int index = getIndexByID(neighbors, father);
                 send(sockets[index], chars_msg, str_msg.length(), 0);
             }
         }
