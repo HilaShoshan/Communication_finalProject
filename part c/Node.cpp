@@ -73,7 +73,7 @@ Function Node::open_tcp_socket(const char* ip, int port) {
     // server_addr.sin_addr.s_addr = inet_addr(ip);
 
     if(inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0) {
-        printf("\nInvalid address/ Address not supported \n");
+        printf("\nInvalid address or port / Address not supported \n");
         return Nack;
     }
     return Ack; 
@@ -162,6 +162,7 @@ Function Node::do_command(string command) {
 
 
 Function Node::check_msg(string msg, int ret) {
+    string buff_str(buff);
     int src_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]); 
     int dest_id = bytesToInt(buff[8], buff[9], buff[10], buff[11]);  
     int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
@@ -180,11 +181,17 @@ Function Node::check_msg(string msg, int ret) {
         if (send(ret, chars_msg, str_msg.length(), 0) == -1) {
             return Nack;
         }
-        // save the id, ip and port of the node (?)
+        // save the id, ip and port of the node
+        int src_port = bytesToInt(buff[20], buff[21], buff[22], buff[23]);
+        int ip_len = bytesToInt(buff[24], buff[25], buff[26], buff[27]);
+        string src_ip = buff_str.substr(28,28+ip_len);
+        list<string> l = {to_string(src_id), src_ip, to_string(src_port)};
+        this->neighbors.push_back(l);
+        this->sockets.push_back(ret);
+        cout << "Connected to Node with ID = " << src_id << endl;
         return Ack; 
     } 
     if (func_id == Function::Discover) {  // check if its a discover message
-        string buff_str(buff);
         int i; 
         for(i = 24; i < buff_str.length(); i+=4) {  // move on the payload
             int next = bytesToInt(buff[i], buff[i+1], buff[i+2], buff[i+3]); 
@@ -217,7 +224,8 @@ Function Node::myconnect() {
     }
     printf("adding fd1(%d) to monitoring\n", server_sock);
     add_fd_to_monitoring(server_sock);
-    const char* payload = "";
+    string payload_str = create_connect_payload(this->Port, this->IP); 
+    const char* payload = payload_str.c_str();
     struct Message msg = {MSG_ID, this->ID, 0, 0, Function::Connect, payload};  
     MSG_ID++;
     string str_msg = make_str_msg(msg);
@@ -234,7 +242,7 @@ Function Node::myconnect() {
         int port = ntohs(server_addr.sin_port);
         int src_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]);
         // cast all to string and insert to the list
-        std::string str_ip(ip);
+        string str_ip(ip);
         list<string> l = {to_string(src_id), str_ip, to_string(port)};
         this->neighbors.push_back(l);
         this->sockets.push_back(server_sock);

@@ -51,7 +51,8 @@ string make_str_msg (Message msg) {
         addZero(bytes, int_fields[i]);
         bytes += to_string(int_fields[i]);
     }
-    if (!(msg.payload != NULL) && (msg.payload[0] == '\0')) {  // payload is not empty
+    string payload_str(msg.payload);
+    if (payload_str.length() != 0) {  // payload is not empty
         bytes += msg.payload;
     }
     return bytes;

@@ -26,3 +26,14 @@ int getIndex(vector<list<string>> v, int id) {
     }
     return -1;
 }
+
+
+string create_connect_payload(int port, char* IP) {
+    string port_bytes, ip_len_bytes;
+    addZero(port_bytes, port);
+    port_bytes += to_string(port);
+    string ip(IP);
+    addZero(ip_len_bytes, ip.length());
+    ip_len_bytes += to_string(ip.length());
+    return port_bytes+ip_len_bytes+ip;
+}
