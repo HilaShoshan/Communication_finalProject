@@ -21,7 +21,6 @@
 // global variables
 int MSG_ID = 1;  // a global counter to the number of messages
 static char buff[SIZE] = {0};  // max size of a message
-char input_buff[1025];  // max size to get inputs
 
 
 /* enum for the function numbers */
@@ -80,6 +79,7 @@ class Node {
     // command & helper functions
     Function myconnect();
     Function discover(int destID);
+    Function recursive_discover(int destID, const char* payload);
     Function route(int discover_message_id, int ans_len, std::vector<int> nodes);
     Function mysend(int len, std::string message);
     Function relay(int nextID, int num_msgs);

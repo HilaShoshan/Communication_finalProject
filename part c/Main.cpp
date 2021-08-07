@@ -2,6 +2,9 @@
 
 
 int main() {
+    
+    init();
+
     char buf[20];
 
     cout << "Welcome! Now build a Node on the Network" << endl;
