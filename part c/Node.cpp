@@ -31,7 +31,7 @@ void Node::listen_to_inputs() {
     while(1) {
         Function response;
 	    ret = wait_for_input();
-        if (count(disconnected.begin(), disconnected.end(), ret)) {  // the socket is irrelevant
+        if (count(disconnected.begin(), disconnected.end(), ret) || (ret == -1)) {  // the socket is irrelevant
             continue;
         }
         printf("waiting for input...\n");
@@ -46,8 +46,11 @@ void Node::listen_to_inputs() {
             // cout << "listenfd, buff = " << buff << endl;
             int addrlen = sizeof(my_addr);
             if ((new_sock = accept(listenfd, (struct sockaddr*)&my_addr, (socklen_t*)&addrlen)) < 0) {
+                cout << "new_sock=" << new_sock << endl; 
+                cout << "error in accept" << endl;
                 response = Nack;
             }
+            cout << "new_sock=" << new_sock << endl; 
             printf("adding fd1(%d) to monitoring\n", new_sock);
             add_fd_to_monitoring(new_sock);
             response = Ack;
