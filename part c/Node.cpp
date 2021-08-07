@@ -1,5 +1,6 @@
 #include "Node.h" 
 #include "Message.h"
+#include "HelperFunctions.h"
 
 using namespace std;
 
@@ -31,7 +32,7 @@ void Node::listen_to_inputs() {
         printf("waiting for input...\n");
 	    ret = wait_for_input();
 	    printf("fd: %d is ready. reading...\n", ret);
-	    read(ret, buff, 512);
+	    read(ret, buff, SIZE);
         if (ret == 0) {  // is a command from the keyboard
             // cout << "keyboard, buff = " << buff << endl;
             response = do_command(buff);
@@ -76,17 +77,6 @@ Function Node::open_tcp_socket(const char* ip, int port) {
         return Nack;
     }
     return Ack; 
-}
-
-
-/* for the switch-case on do_command */
-Command hashit (std::string const& inString) {
-    if (inString == "setid") return _setid;
-    if (inString == "connect") return _connect;
-    if (inString == "send") return _send;
-    if (inString == "route") return _route;
-    if (inString == "peers") return _peers;
-    return _illegle_command;
 }
 
 
@@ -194,11 +184,13 @@ Function Node::check_msg(string msg, int ret) {
         return Ack; 
     } 
     if (func_id == Function::Discover) {  // check if its a discover message
-        for(int i = 24; i < buff.length(); i+=4) {  // move on the payload
+        string buff_str(buff);
+        int i; 
+        for(i = 24; i < buff_str.length(); i+=4) {  // move on the payload
             int next = bytesToInt(buff[i], buff[i+1], buff[i+2], buff[i+3]); 
             if(next == src_id) break;
         }
-        string payload_str = buff.substr(20,i+4); 
+        string payload_str = buff_str.substr(20,i+4); 
         if (this->ID == dest_id) {  // I'm the destination
             string bytes; 
             addZero(bytes, this->ID);  // add myself to the payload
@@ -213,9 +205,6 @@ Function Node::check_msg(string msg, int ret) {
             return Ack;
         }
         return discover(dest_id, this->ID, payload_str);
-    }
-    if (func_id == Function::Route) {
-        // send a route msg back to ret 
     }
     return Nack;
 }
@@ -236,7 +225,7 @@ Function Node::myconnect() {
     if (send(server_sock, chars_msg, str_msg.length(), 0) == -1) {
         perror("send");
     }
-    int valread = read(server_sock, buff, 512);
+    int valread = read(server_sock, buff, SIZE);
     // cout << "the message is : " << buff << endl;
     int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]); 
     if (func_id == Function::Ack) {  // check if its an Ack message
@@ -265,7 +254,7 @@ vector<int> Node::getPath(int destID) {
     string bytes;
     addZero(bytes, destID);
     bytes += to_string(destID);  // add the destID to the 4 first bytes on payload
-    if(discover(destID, -1, bytes) == Ack) 
+    if(discover(destID, this->ID, bytes) == Ack) 
         return paths.back();  // the last path is the last one that added 
     else 
         return vector<int>();
@@ -303,9 +292,11 @@ Function Node::discover(int destID, int father, string payload_str) {
                 perror("send");
             }
         }
-        read(sockets[i], buff, 512);
+        read(sockets[i], buff, SIZE);
         int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]); 
         int original_src = bytesToInt(buff[24], buff[25], buff[26], buff[27]);
+        string buff_str(buff);
+        const char* payload = buff_str.substr(20,SIZE).c_str();  
         if (func_id == Function::Route) {  // check if its a route message --> path has found!
             if (this->ID == original_src) {  // I'm the original source node
                 addThePath(destID, buff);
@@ -313,6 +304,13 @@ Function Node::discover(int destID, int father, string payload_str) {
             }  // maybe add here and check if it's the shortest path
             else {
                 // send route to the node who sent me the discover msg
+                int trial = 0; 
+                struct Message msg = {MSG_ID, this->ID, father, trial, Function::Route, payload};
+                MSG_ID++;
+                string str_msg = make_str_msg(msg);
+                const char* chars_msg = str_msg.c_str();
+                int index = getIndex(neighbors, father);
+                send(sockets[index], chars_msg, str_msg.length(), 0);
             }
         }
     }

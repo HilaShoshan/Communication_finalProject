@@ -79,7 +79,7 @@ class Node {
 
     // command & helper functions
     Function myconnect();
-    Function discover(int destID, int father, string payload);
+    Function discover(int destID, int father, std::string payload);
     Function route(int discover_message_id, int ans_len, std::vector<int> nodes);
     Function mysend(int len, std::string message);
     Function relay(int nextID, int num_msgs);
@@ -99,6 +99,6 @@ class Node {
     ~Node() {
         /* swap the contents of the vector into a temporary 
         that will get destroyed and free the memory */
-        std::vector<std::vector<int>>().swap(paths);
+        // std::vector<std::vector<int>>().swap(paths);
     } 
 };
