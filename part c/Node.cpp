@@ -57,6 +57,10 @@ void Node::listen_to_inputs() {
         }
         else {  // another message (in the given form, start with id)
             // cout << "else, buff = " << buff << endl;
+            for(int i = 0; i < sockets.size(); i++) {
+                cout << sockets[i] << " ";
+            }
+            cout << endl;
             if (valread == 0) {  // check if the node has disconnected
                 int index = getIndexByVal(sockets, ret);
                 disconnect(index);
@@ -75,6 +79,7 @@ void Node::listen_to_inputs() {
 
 
 void Node::disconnect(int index) {
+    cout << "disconnect(" << index << ")" << endl;
     cout << "some node has disconnected" << endl;
     vector<int>::iterator it = sockets.begin();
     sockets.erase(it+index);
@@ -92,6 +97,10 @@ void Node::disconnect(int index) {
 
 
 Function Node::open_tcp_socket(const char* ip, int port) {
+    if (strcmp(ip, this->IP) && (port == this->Port)) {
+        printf("Can not connect yourself"); 
+        return Nack; 
+    }
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
     if(server_sock < 0) {
         return Nack;
@@ -197,8 +206,6 @@ Function Node::check_msg(string msg, int ret) {
             payload[i] = buff[i];      // check it .... &*(%#)
         }
         Function response = Ack;
-        if (dest_id != this->ID)  // the message is not for me
-            response = Nack;
         struct Message msg = {MSG_ID, this->ID, src_id, 0, response, payload};  // ack ot nack message
         MSG_ID++;
         string str_msg = make_str_msg(msg);
@@ -270,6 +277,10 @@ Function Node::myconnect() {
         string str_ip(ip);
         list<string> l = {to_string(src_id), str_ip, to_string(port)};
         this->neighbors.push_back(l);
+        for (int i=0; i < sockets.size(); i++) {
+            cout << sockets[i] << " ";
+        }
+        cout << endl;
         this->sockets.push_back(server_sock);
         cout << "Connected to Node with ID = " << src_id << endl;
         return Ack;
