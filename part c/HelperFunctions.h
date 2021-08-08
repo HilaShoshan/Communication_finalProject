@@ -9,11 +9,12 @@ using namespace std;
 
 /* for the switch-case on do_command */
 Command hashit (std::string const& inString) {
+    string first5 = inString.substr(0,5);
     if (inString == "setid") return _setid;
     if (inString == "connect") return _connect;
     if (inString == "send") return _send;
-    if (inString == "route") return _route;
-    if (inString == "peers") return _peers;
+    if (first5 == "route") return _route;
+    if (first5 == "peers") return _peers;
     return _illegle_command;
 }
 
@@ -38,6 +39,17 @@ int getIndexByVal(vector<int> v, int val) {
         }
     }
     return -1;
+}
+
+
+bool isInPayload(string payload_str, int id) {
+    const char* payload = payload_str.c_str();
+    int next;
+    for (int i = 4; i < payload_str.size(); i+=4) {
+        next = bytesToInt(payload[i], payload[i+1], payload[i+2], payload[i+3]); 
+        if (next == id) return true; 
+    }
+    return false;
 }
 
 

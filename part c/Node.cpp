@@ -153,46 +153,56 @@ Function Node::do_command(string command) {
         }
     case _send:
         {
-            pos = info.find(",");
-            int dest_id = stoi(info.substr(0, pos));  // destination node id
-            info = info.substr(pos+1);  // override info
-            pos = info.find(",");
-            int len = stoi(info.substr(0, pos));
-            string message = info.substr(pos+1);
-            if (len != message.length()-1) {
+            try {
+                pos = info.find(",");
+                int dest_id = stoi(info.substr(0, pos));  // destination node id
+                info = info.substr(pos+1);  // override info
+                pos = info.find(",");
+                int len = stoi(info.substr(0, pos));
+                string message = info.substr(pos+1);
+                if (len != message.length()-1) {
+                    return Nack;
+                }
+                vector<int> path = getPath(dest_id); 
+                if (path.empty())  // no path has found
+                    return Nack;
+                int num_relay = path.size()-2; 
+                string payload; 
+                for (int i = 1; i < path.size(); i++) {  // convert the path to string for payload
+                    string bytes;                        // starting with 1 (next node)
+                    addZero(bytes, path[i]); 
+                    bytes += to_string(path[i]);
+                    payload += bytes;
+                }
+                int next = path.at(1);  // the first node in the path after me
+                if (next != dest_id) {  
+                    return relay(next, num_relay, dest_id, len, message, payload);
+                }
+                else {  // the destination is a neighbor of mine
+                    return mysend(dest_id, len, message); 
+                }
+            } 
+            catch (const std::exception& e) {
+                cout << err_msg << endl;
                 return Nack;
-            }
-            vector<int> path = getPath(dest_id); 
-            if (path.empty())  // no path has found
-                return Nack;
-            
-            cout << "path: ";
-            for (int i = 0; i < path.size(); i++) {
-                cout << " " << path[i] << " ";
-            }
-            cout << endl;
-
-            int num_relay = path.size()-2; 
-            string payload; 
-            for (int i = 1; i < path.size(); i++) {  // convert the path to string for payload
-                string bytes;                        // starting with 1 (next node)
-                addZero(bytes, path[i]); 
-                bytes += to_string(path[i]);
-                payload += bytes;
-            }
-            int next = path.at(1);  // the first node in the path after me
-            if (next != dest_id) {  
-                return relay(next, num_relay, dest_id, len, message, payload);
-            }
-            else {  // the destination is a neighbor of mine
-                return mysend(dest_id, len, message); 
             }
         }
     case _route:
-        // return route(stoi(info));  // info contains the id only
-        return Nack;       
+        try {
+            return route(stoi(info));  // info contains the id only
+        }
+        catch (const std::exception& e) {
+            cout << err_msg << endl;
+            return Nack;
+        }
     case _peers:
-        return peers();
+        try { 
+            return peers();
+        }
+        catch (const std::exception& e) {
+            cout << err_msg << endl;
+            return Nack;
+        }
     default:
         cout << err_msg << endl;
         return Nack;
@@ -238,7 +248,6 @@ Function Node::check_msg(string msg, int ret) {
         string payload_str = buff_str.substr(20,i+4); 
         int original_dest = bytesToInt(buff[20], buff[21], buff[22], buff[23]);
         if (this->ID == original_dest) {  // I'm the destination
-            cout << "sending route" << endl;
             string bytes; 
             addZero(bytes, this->ID);  // add myself to the payload
             bytes += to_string(this->ID);
@@ -255,6 +264,7 @@ Function Node::check_msg(string msg, int ret) {
         return discover(original_dest, src_id, payload_str);
     }
     if (func_id == Function::Send) {  
+        int original_src = bytesToInt(buff[20], buff[21], buff[22], buff[23]);  // first 4 bytes on payload
         Function response;
         if (dest_id != this->ID) {  // the message is not for me 
             response = Nack;
@@ -263,7 +273,7 @@ Function Node::check_msg(string msg, int ret) {
             response = Ack;
             int len = bytesToInt(buff[20], buff[21], buff[22], buff[23]);
             string send_msg = buff_str.substr(24,24+len); 
-            cout << "new message from " << src_id << " : " << send_msg << endl;
+            cout << "new message from " << original_src << " : " << send_msg << endl;
         }
         struct Message msg = {MSG_ID, this->ID, src_id, 0, response, ""};  // ack ot nack message
         MSG_ID++;
@@ -329,10 +339,6 @@ Function Node::myconnect() {
         string str_ip(ip);
         list<string> l = {to_string(src_id), str_ip, to_string(port)};
         this->neighbors.push_back(l);
-        for (int i=0; i < sockets.size(); i++) {
-            cout << sockets[i] << " ";
-        }
-        cout << endl;
         this->sockets.push_back(server_sock);
         cout << "Connected to Node with ID = " << src_id << endl;
         return Ack;
@@ -358,12 +364,10 @@ vector<int> Node::getPath(int destID) {
 
 
 void Node::addThePath(int destID, string buff) {
-    cout << "addThePath" << endl;
     vector<int> path = {};
     for(int i = 24; i < buff.length(); i+=4) {  // move on the payload
         int next = bytesToInt(buff[i], buff[i+1], buff[i+2], buff[i+3]);
         path.push_back(next);
-        cout << "pushed ***" << next << "***" << endl; 
         if(next == destID) break;
     }
     paths.push_back(path);
@@ -371,23 +375,26 @@ void Node::addThePath(int destID, string buff) {
 
 
 Function Node::discover(int destID, int father, string payload_str) {
-    cout << "im " << this->ID << " and my father is " << father << endl;
     string bytes;
     addZero(bytes, this->ID);
     bytes += to_string(this->ID);  
     payload_str += bytes;  // add myself to the payload (path)
     // send a discover message to all the neighbors (that are not in the payload)
-    for(int i = 0; i < neighbors.size(); i++) {  // neighbor is a list {id,ip,port}, all strings
+    for (int i = 0; i < neighbors.size(); i++) {  // neighbor is a list {id,ip,port}, all strings
         auto neighbor = neighbors[i];
         int neig_id = stoi(neighbor.front());  // the id is the first one on the list
+        if (isInPayload(payload_str, neig_id)) {
+            continue;
+        }
         int trial = ceil(payload_str.length()/492.0);  // the number of message (pieces) to send 
         for (unsigned j = 0; j < payload_str.length(); j += 492) {
-            const char* payload = payload_str.substr(j, 492).c_str();  
+            string str = payload_str.substr(j, 492);
+            const char* payload = str.c_str();  
             struct Message msg = {MSG_ID, this->ID, neig_id, trial-1, Function::Discover, payload};
             MSG_ID++;
             string str_msg = make_str_msg(msg);
             const char* chars_msg = str_msg.c_str();
-            if (send(sockets[i], chars_msg, str_msg.length(), 0) == -1) {  // senf a discover message to the neighbor
+            if (send(sockets[i], chars_msg, str_msg.length(), 0) == -1) {  // send a discover message to the neighbor
                 perror("send");
             }
         }
@@ -398,23 +405,18 @@ Function Node::discover(int destID, int father, string payload_str) {
         string str = buff_str.substr(20,SIZE);
         const char* payload = str.c_str();  
         if (func_id == Function::Route) {  // check if its a route message --> path has found!
-            cout << "got route msg" << endl;
             if (this->ID == original_src) {  // I'm the original source node
-                cout << "im the original src, buff: " << buff << endl;
                 addThePath(destID, buff);
                 return Ack;
             }  // maybe add here and check if it's the shortest path
             else {
                 // send route to the node who sent me the discover msg
-                cout << "im NOT the original src, buff: " << buff << endl;
                 int trial = 0; 
                 struct Message msg = {MSG_ID, this->ID, father, trial, Function::Route, payload};
                 MSG_ID++;
                 string str_msg = make_str_msg(msg);
                 const char* chars_msg = str_msg.c_str();
                 int index = getIndexByID(neighbors, father);
-                cout << "sending route to socket " << sockets[index] << endl;
-                cout << "msg is: " << chars_msg << endl;
                 send(sockets[index], chars_msg, str_msg.length(), 0);
                 return Ack;
             }
@@ -475,36 +477,41 @@ Function Node::relay(int nextID, int num_msgs, int destID, int len, string messa
 
 
 Function Node::peers() {
+    if (neighbors.size() == 0) {
+        cout << "no neighbors yet" << endl;
+        return Ack; 
+    }
     int n = neighbors[0].size();
-    if (n != 0){
-         for(int i = 0; i < neighbors.size(); i++) {  
-         auto neighbor = neighbors[i];
-         int neig_id = stoi(neighbor.front());  // the id is the first one from the id list
-         std::cout << neig_id  << ",";
-   }      
-return Ack;
+    if (n != 0) {
+        for(int i = 0; i < neighbors.size()-1; i++) {  
+            auto neighbor = neighbors[i];
+            int neig_id = stoi(neighbor.front());  // the id is the first one from the id list
+            cout << neig_id  << ",";
+        }
+        auto neighbor = neighbors[neighbors.size()-1];
+        int neig_id = stoi(neighbor.front());  // the id is the first one from the id list
+        cout << neig_id << endl;
+        return Ack;
     }
-else{
-    return Nack; 
-}
+    return Nack;
 }
 
- //std::vector<std::vector<int>> paths = {};  // saves all the paths from the current node to other nodes on the network
 
-Function Node::route(int node_id){
-    for (int i=0 ;i<paths.size();i++){    // over on the vectors inside the vectors and check whit itaretor if node_id contains in the paths
-    vector<int>::iterator it = std::find( paths[i].begin(), paths[i].end(), node_id) ; 
-    if (it != paths[i].end()){
-    for (int j =i; i< paths[j].size();j++){
-         auto path = paths[j];
-         int way = paths[j].front();
-         std::cout << way  << ",";
-    }  
-    return Ack;
-    }else{
-        cout << "No route found"<< endl;
-        return Nack;
+Function Node::route(int node_id) {
+    for (int i = 0; i < paths.size(); i++) {  // over on the vectors inside the vectors and check whit itaretor if node_id contains in the paths
+        auto path = paths[i]; 
+        if (path[path.size()-1] != node_id) {  // it's not a path to node_id
+            continue;
+        }
+        for (int j = 0; j < path.size()-1; j++) {
+            int way = path[j];
+            std::cout << way  << "->";
+        }  
+        int way = path[path.size()-1];
+        std::cout << way << endl;
+        return Ack;
     }
-    }
+    cout << "No route found" << endl;
+    return Nack;
 }
 

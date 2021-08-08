@@ -82,7 +82,6 @@ class Node {
     Function route(int node_id);
     Function myconnect();
     Function discover(int destID, int father, std::string payload);
-   // Function route(int discover_message_id, int ans_len, std::vector<int> nodes);
     Function mysend(int dest, int len, std::string message);
     Function relay(int nextID, int num_msgs, int destID, int len, std::string message, std::string payload);
     Function peers();
