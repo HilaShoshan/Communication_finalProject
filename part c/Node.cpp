@@ -57,10 +57,6 @@ void Node::listen_to_inputs() {
         }
         else {  // another message (in the given form, start with id)
             // cout << "else, buff = " << buff << endl;
-            for(int i = 0; i < sockets.size(); i++) {
-                cout << sockets[i] << " ";
-            }
-            cout << endl;
             if (valread == 0) {  // check if the node has disconnected
                 int index = getIndexByVal(sockets, ret);
                 disconnect(index);
@@ -79,7 +75,6 @@ void Node::listen_to_inputs() {
 
 
 void Node::disconnect(int index) {
-    cout << "disconnect(" << index << ")" << endl;
     cout << "some node has disconnected" << endl;
     vector<int>::iterator it = sockets.begin();
     sockets.erase(it+index);
@@ -159,29 +154,29 @@ Function Node::do_command(string command) {
     case _send:
         {
             pos = info.find(",");
-            int id = stoi(info.substr(0, pos));
+            int dest_id = stoi(info.substr(0, pos));  // destination node id
             info = info.substr(pos+1);  // override info
             pos = info.find(",");
             int len = stoi(info.substr(0, pos));
             string message = info.substr(pos+1);
             if (len != message.length()-1) {
                 return Nack;
-            } 
-            std::vector<int> path = getPath(id); 
-            if(path.empty())  // no path has found
+            }
+            std::vector<int> path = getPath(dest_id); 
+            if (path.empty())  // no path has found
                 return Nack;
+            cout << endl;
+            int num_relay = path.size()-2; 
+            int next = path.at(1);  // the first node in the path after me
+            if (next != dest_id) {  
+                cout << "should relay .... " << endl;
+                return Nack;
+                // return relay(next, num_relay, dest_id, len, message);
+            }
+            else {  // the destination is a neighbor of mine
+                return mysend(dest_id, len, message); 
+            }
         }
-        /*
-        int num_msgs = 0;  // number of the following msgs to be relayed .......
-        Node current = *this;
-        for (i = 1; i < path.getSize()-2; i++) {  // send relay messages until i-2
-            int next = path.at(i); 
-            current.relay(next.getID(), num_msgs); 
-            current = next;
-        }
-        return current.send(len, message); 
-        // the message should contains the id / ip on a header or whatever  (?)
-        */
     case _route:
         // return route(stoi(info));  // info contains the id only
         return Nack;       
@@ -195,7 +190,7 @@ Function Node::do_command(string command) {
 
 
 Function Node::check_msg(string msg, int ret) {
-    cout << "check msg: " << msg << endl;
+    // cout << "check msg: " << msg << endl;
     string buff_str(buff);
     int src_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]); 
     int dest_id = bytesToInt(buff[8], buff[9], buff[10], buff[11]);  
@@ -244,6 +239,26 @@ Function Node::check_msg(string msg, int ret) {
             return Ack;
         }
         return discover(dest_id, this->ID, payload_str);
+    }
+    if (func_id == Function::Send) {  
+        Function response;
+        if (dest_id != this->ID) {  // the message is not for me 
+            response = Nack;
+        }
+        else {
+            response = Ack;
+            int len = bytesToInt(buff[20], buff[21], buff[22], buff[23]);
+            string send_msg = buff_str.substr(24,24+len); 
+            cout << "new message from " << src_id << " : " << send_msg << endl;
+        }
+        struct Message msg = {MSG_ID, this->ID, src_id, 0, response, ""};  // ack ot nack message
+        MSG_ID++;
+        string str_msg = make_str_msg(msg);
+        const char* chars_msg = str_msg.c_str();
+        if (send(ret, chars_msg, str_msg.length(), 0) == -1) {
+            return Nack;
+        }
+        return Ack; 
     }
     return Nack;
 }
@@ -359,6 +374,31 @@ Function Node::discover(int destID, int father, string payload_str) {
         }
     }
     return Nack; 
+}
+
+
+/* send a message between neighbors */
+Function Node::mysend(int dest, int len, string message) {
+    string bytes; 
+    addZero(bytes, len);  // add myself to the payload
+    bytes += to_string(len);
+    string concat = bytes+message;
+    const char* payload = concat.c_str();
+    struct Message msg = {MSG_ID, this->ID, dest, 0, Function::Send, payload};  
+    MSG_ID++;
+    string str_msg = make_str_msg(msg);
+    const char* chars_msg = str_msg.c_str();
+    int index = getIndexByID(neighbors, dest); 
+    int dest_sock = sockets[index];
+    if (send(dest_sock, chars_msg, str_msg.length(), 0) == -1) {
+        perror("send");
+    }
+    int valread = read(dest_sock, buff, SIZE);
+    int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]); 
+    if (func_id == Function::Ack) {  // check if its an Ack message
+        return Ack;
+    }
+    return Nack;
 }
 
 
