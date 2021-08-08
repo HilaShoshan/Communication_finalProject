@@ -79,6 +79,7 @@ class Node {
     }
 
     // command & helper functions
+    Function route2(int node_id);
     Function myconnect();
     Function discover(int destID, int father, std::string payload);
     Function route(int discover_message_id, int ans_len, std::vector<int> nodes);
