@@ -215,6 +215,7 @@ Function Node::check_msg(string msg, int ret) {
     string buff_str(buff); 
     int src_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]); 
     int dest_id = bytesToInt(buff[8], buff[9], buff[10], buff[11]);  
+    int trail = bytesToInt(buff[12], buff[13], buff[14], buff[15]);
     int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
     if (func_id == Function::Connect) {  // check if its a connect message
         char payload[4];
@@ -264,7 +265,6 @@ Function Node::check_msg(string msg, int ret) {
         return discover(original_dest, src_id, payload_str);
     }
     if (func_id == Function::Send) {  
-        int trail = bytesToInt(buff[12], buff[13], buff[14], buff[15]);
         int len = bytesToInt(buff[20], buff[21], buff[22], buff[23]);  // first 4 bytes on payload
         int buff_len = buff_str.length();
         int original_src = bytesToInt(buff[buff_len-4], buff[buff_len-3], buff[buff_len-2], buff[buff_len-1]);  
@@ -274,9 +274,8 @@ Function Node::check_msg(string msg, int ret) {
             return Ack;
         }
         else {  // in case of trail=0
-            int end_msg = 24+len;
-            string cut = buff_str.substr(24,end_msg);
-            cout << "cut: " << cut << endl;
+            string cut = buff_str.substr(24,24+len);
+            // cout << "cut: " << cut << endl;
             send_msg += cut;
             if (dest_id != this->ID) {  // the message is not for me 
                 response = Nack;
@@ -314,9 +313,6 @@ Function Node::check_msg(string msg, int ret) {
             addZero(src_bytes, src);
             src_bytes += to_string(src); 
             message += src_bytes; 
-            cout << "src_bytes: " << src_bytes << endl;
-            cout << "msg_len: " << msg_len << endl;
-            cout << "message: " << message << endl;
             return mysend(dest, msg_len, message);
         }
         string path = buff_str.substr(28+msg_len+4,len);  // cut my id from payload
