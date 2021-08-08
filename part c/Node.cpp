@@ -379,16 +379,20 @@ else{
 
  //std::vector<std::vector<int>> paths = {};  // saves all the paths from the current node to other nodes on the network
 
-Function route2(int node_id){
-    // vector<int>::iterator it = find( paths.begin(), paths.end(), node_id) ; //check  if node_id  contains in the paths
-    // if (it != paths.end()){
-    // for (int i =0; i< paths.size();i++){
-    //      auto path = paths[i];
-    //      int way = paths.front();
-    //      std::cout << way  << ",";
-    // }  
-    // return Ack;
-    // }else{
+Function Node::route(int node_id){
+    for (int i=0 ;i<paths.size();i++){    // over on the vectors inside the vectors and check whit itaretor if node_id contains in the paths
+    vector<int>::iterator it = std::find( paths[i].begin(), paths[i].end(), node_id) ; 
+    if (it != paths[i].end()){
+    for (int j =i; i< paths[j].size();j++){
+         auto path = paths[j];
+         int way = paths[j].front();
+         std::cout << way  << ",";
+    }  
+    return Ack;
+    }else{
+        cout << "No route found"<< endl;
         return Nack;
     }
+    }
+}
 
