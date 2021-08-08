@@ -162,16 +162,20 @@ Function Node::do_command(string command) {
             if (len != message.length()-1) {
                 return Nack;
             }
-            std::vector<int> path = getPath(dest_id); 
+            vector<int> path = getPath(dest_id); 
             if (path.empty())  // no path has found
                 return Nack;
-            cout << endl;
             int num_relay = path.size()-2; 
+            string payload; 
+            for (int i = 1; i < path.size(); i++) {  // convert the path to string for payload
+                string bytes;                        // starting with 1 (next node)
+                addZero(bytes, path[i]); 
+                bytes += to_string(path[i]);
+                payload += bytes;
+            }
             int next = path.at(1);  // the first node in the path after me
             if (next != dest_id) {  
-                cout << "should relay .... " << endl;
-                return Nack;
-                // return relay(next, num_relay, dest_id, len, message);
+                return relay(next, num_relay, dest_id, len, message, payload);
             }
             else {  // the destination is a neighbor of mine
                 return mysend(dest_id, len, message); 
@@ -259,6 +263,32 @@ Function Node::check_msg(string msg, int ret) {
             return Nack;
         }
         return Ack; 
+    }
+    if (func_id == Function::Relay) { 
+        cout << "msg= " << msg << endl;
+        int num_next_relay = bytesToInt(buff[20], buff[21], buff[22], buff[23]);
+        int msg_len = bytesToInt(buff[24], buff[25], buff[26], buff[27]);
+        string message = buff_str.substr(28,28+msg_len); 
+        int len = buff_str.length();
+        string path_bytes = buff_str.substr(28+msg_len,len);
+        int dest = bytesToInt(buff[len-4], buff[len-3], buff[len-2], buff[len-1]);
+        cout << "dest= " << dest << endl;
+        struct Message msg = {MSG_ID, this->ID, src_id, 0, Function::Ack, ""};
+        MSG_ID++;
+        string str_msg = make_str_msg(msg);
+        const char* chars_msg = str_msg.c_str();
+        if (send(ret, chars_msg, str_msg.length(), 0) == -1) {
+            return Nack;
+        }
+        if (num_next_relay == 0) {  // the next node is the destination
+            return mysend(dest, msg_len, message);
+        }
+        string path = buff_str.substr(28+msg_len+4,len);  // cut my id from payload
+        string next = path.substr(0,4);
+        const char* next_bytes = next.c_str();
+        int nextID = bytesToInt(next_bytes[0], next_bytes[1], next_bytes[2], next_bytes[3]);
+        cout << "nextID= " << nextID << endl;
+        return relay(nextID, num_next_relay, dest, msg_len, message, path);
     }
     return Nack;
 }
@@ -389,6 +419,31 @@ Function Node::mysend(int dest, int len, string message) {
     string str_msg = make_str_msg(msg);
     const char* chars_msg = str_msg.c_str();
     int index = getIndexByID(neighbors, dest); 
+    int dest_sock = sockets[index];
+    if (send(dest_sock, chars_msg, str_msg.length(), 0) == -1) {
+        perror("send");
+    }
+    int valread = read(dest_sock, buff, SIZE);
+    int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]); 
+    if (func_id == Function::Ack) {  // check if its an Ack message
+        return Ack;
+    }
+    return Nack;
+}
+
+
+Function Node::relay(int nextID, int num_msgs, int destID, int len, string message, string path) {
+    string concat = create_relay_payload(num_msgs, len, message, path);
+    const char* payload = concat.c_str();
+    int trial = 0;  // compute it ....
+    struct Message msg = {MSG_ID, this->ID, nextID, trial, Function::Relay, payload};  
+    MSG_ID++;
+    string str_msg = make_str_msg(msg);
+    const char* chars_msg = str_msg.c_str();
+    int index = getIndexByID(neighbors, nextID); 
+    if (index == -1) {  // asked to send a message to a node that is not his neighbor
+        return Nack;
+    }
     int dest_sock = sockets[index];
     if (send(dest_sock, chars_msg, str_msg.length(), 0) == -1) {
         perror("send");

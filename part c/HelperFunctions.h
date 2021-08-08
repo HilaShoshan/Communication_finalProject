@@ -1,5 +1,8 @@
+#pragma once
+
 #include <iostream>
 #include <vector>
+// #include "Message.h"
 
 using namespace std;
 
@@ -46,4 +49,15 @@ string create_connect_payload(int port, char* IP) {
     addZero(ip_len_bytes, ip.length());
     ip_len_bytes += to_string(ip.length());
     return port_bytes+ip_len_bytes+ip;
+}
+
+
+string create_relay_payload(int num_msgs, int len, string message, string path) {
+    string num, length; 
+    addZero(num, num_msgs-1);  // the num of next relay messages
+    num += to_string(num_msgs-1);
+    addZero(length, len);  // the num of next relay messages
+    length += to_string(len);
+    string concat = num+length+message+path;
+    return concat; 
 }
