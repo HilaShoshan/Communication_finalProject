@@ -165,6 +165,13 @@ Function Node::do_command(string command) {
             vector<int> path = getPath(dest_id); 
             if (path.empty())  // no path has found
                 return Nack;
+            
+            cout << "path: ";
+            for (int i = 0; i < path.size(); i++) {
+                cout << " " << path[i] << " ";
+            }
+            cout << endl;
+
             int num_relay = path.size()-2; 
             string payload; 
             for (int i = 1; i < path.size(); i++) {  // convert the path to string for payload
@@ -174,6 +181,7 @@ Function Node::do_command(string command) {
                 payload += bytes;
             }
             int next = path.at(1);  // the first node in the path after me
+            cout << "dest_id=" << dest_id << " next=" << next << endl;
             if (next != dest_id) {  
                 return relay(next, num_relay, dest_id, len, message, payload);
             }
@@ -229,12 +237,15 @@ Function Node::check_msg(string msg, int ret) {
             if(next == src_id) break;
         }
         string payload_str = buff_str.substr(20,i+4); 
-        if (this->ID == dest_id) {  // I'm the destination
+        int original_dest = bytesToInt(buff[20], buff[21], buff[22], buff[23]);
+        cout << "original_dest=" << original_dest << " this->ID=" << this->ID << endl;
+        if (this->ID == original_dest) {  // I'm the destination
             string bytes; 
             addZero(bytes, this->ID);  // add myself to the payload
             bytes += to_string(this->ID);
             const char* payload = (payload_str+bytes).c_str();
             int trail = 0;  // compute this ... 
+            cout << "payload of route msg : " << payload << endl;
             struct Message msg = {MSG_ID, this->ID, src_id, trail, Function::Route, payload}; 
             MSG_ID++;
             string str_msg = make_str_msg(msg);
@@ -242,7 +253,7 @@ Function Node::check_msg(string msg, int ret) {
             send(ret, chars_msg, str_msg.length(), 0);
             return Ack;
         }
-        return discover(dest_id, this->ID, payload_str);
+        return discover(original_dest, this->ID, payload_str);
     }
     if (func_id == Function::Send) {  
         Function response;
@@ -351,9 +362,12 @@ vector<int> Node::getPath(int destID) {
 
 
 void Node::addThePath(int destID, string buff) {
+    cout << "addToPath" << endl;
+    cout << "buff= " << buff << endl;
     vector<int> path = {};
     for(int i = 24; i < buff.length(); i+=4) {  // move on the payload
-        int next = bytesToInt(buff[i], buff[i+1], buff[i+2], buff[i+3]); 
+        int next = bytesToInt(buff[i], buff[i+1], buff[i+2], buff[i+3]);
+        cout << "added next = " << next << endl; 
         path.push_back(next);
         if(next == destID) break;
     }
@@ -373,6 +387,7 @@ Function Node::discover(int destID, int father, string payload_str) {
         int trial = ceil(payload_str.length()/492.0);  // the number of message (pieces) to send 
         for (unsigned j = 0; j < payload_str.length(); j += 492) {
             const char* payload = payload_str.substr(j, 492).c_str();  
+            cout << "sent discover msg with payload: " << payload << endl;
             struct Message msg = {MSG_ID, this->ID, neig_id, trial-1, Function::Discover, payload};
             MSG_ID++;
             string str_msg = make_str_msg(msg);
@@ -387,6 +402,7 @@ Function Node::discover(int destID, int father, string payload_str) {
         string buff_str(buff);
         const char* payload = buff_str.substr(20,SIZE).c_str();  
         if (func_id == Function::Route) {  // check if its a route message --> path has found!
+            cout << "payload of the return route msg: " << payload << endl;
             if (this->ID == original_src) {  // I'm the original source node
                 addThePath(destID, buff);
                 return Ack;
