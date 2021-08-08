@@ -43,6 +43,8 @@ int getIndexByVal(vector<int> v, int val) {
 
 
 bool isInPayload(string payload_str, int id) {
+    // cout << "isInPayload" << endl;
+    cout << payload_str << endl; 
     const char* payload = payload_str.c_str();
     int next;
     for (int i = 4; i < payload_str.size(); i+=4) {

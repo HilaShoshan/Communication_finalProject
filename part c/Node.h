@@ -61,6 +61,7 @@ class Node {
     std::vector<int> sockets = {};  // neighbors sockets, corresponding to neighbors vector
     struct sockaddr_in my_addr, server_addr;
     int listenfd, server_sock, new_sock;
+    std::string send_msg;
 
     public:
 

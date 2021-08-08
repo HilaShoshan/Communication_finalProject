@@ -93,7 +93,7 @@ void Node::disconnect(int index) {
 
 Function Node::open_tcp_socket(const char* ip, int port) {
     if (strcmp(ip, this->IP) && (port == this->Port)) {
-        printf("Can not connect yourself"); 
+        printf("Can not connect yourself\n"); 
         return Nack; 
     }
     server_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -212,7 +212,7 @@ Function Node::do_command(string command) {
 
 Function Node::check_msg(string msg, int ret) {
     // cout << "check msg: " << msg << endl;
-    string buff_str(buff);
+    string buff_str(buff); 
     int src_id = bytesToInt(buff[4], buff[5], buff[6], buff[7]); 
     int dest_id = bytesToInt(buff[8], buff[9], buff[10], buff[11]);  
     int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]);  
@@ -264,33 +264,44 @@ Function Node::check_msg(string msg, int ret) {
         return discover(original_dest, src_id, payload_str);
     }
     if (func_id == Function::Send) {  
-        int original_src = bytesToInt(buff[20], buff[21], buff[22], buff[23]);  // first 4 bytes on payload
+        int trail = bytesToInt(buff[12], buff[13], buff[14], buff[15]);
+        int len = bytesToInt(buff[20], buff[21], buff[22], buff[23]);  // first 4 bytes on payload
+        int buff_len = buff_str.length();
+        int original_src = bytesToInt(buff[buff_len-4], buff[buff_len-3], buff[buff_len-2], buff[buff_len-1]);  
         Function response;
-        if (dest_id != this->ID) {  // the message is not for me 
-            response = Nack;
+        if (trail > 0) {
+            send_msg += buff_str.substr(24,24+len);
+            return Ack;
         }
-        else {
-            response = Ack;
-            int len = bytesToInt(buff[20], buff[21], buff[22], buff[23]);
-            string send_msg = buff_str.substr(24,24+len); 
-            cout << "new message from " << original_src << " : " << send_msg << endl;
+        else {  // in case of trail=0
+            int end_msg = 24+len;
+            string cut = buff_str.substr(24,end_msg);
+            cout << "cut: " << cut << endl;
+            send_msg += cut;
+            if (dest_id != this->ID) {  // the message is not for me 
+                response = Nack;
+            }
+            else {
+                response = Ack;
+                cout << "new message from " << original_src << " : " << send_msg << endl;
+            }
+            struct Message msg = {MSG_ID, this->ID, src_id, 0, response, ""};  // ack ot nack message
+            MSG_ID++;
+            string str_msg = make_str_msg(msg);
+            const char* chars_msg = str_msg.c_str();
+            if (send(ret, chars_msg, str_msg.length(), 0) == -1) {
+                return Nack;
+            }
+            return Ack; 
         }
-        struct Message msg = {MSG_ID, this->ID, src_id, 0, response, ""};  // ack ot nack message
-        MSG_ID++;
-        string str_msg = make_str_msg(msg);
-        const char* chars_msg = str_msg.c_str();
-        if (send(ret, chars_msg, str_msg.length(), 0) == -1) {
-            return Nack;
-        }
-        return Ack; 
     }
     if (func_id == Function::Relay) { 
         int num_next_relay = bytesToInt(buff[20], buff[21], buff[22], buff[23]);
         int msg_len = bytesToInt(buff[24], buff[25], buff[26], buff[27]);
         string message = buff_str.substr(28,28+msg_len); 
         int len = buff_str.length();
-        string path_bytes = buff_str.substr(28+msg_len,len);
         int dest = bytesToInt(buff[len-4], buff[len-3], buff[len-2], buff[len-1]);
+        int src = bytesToInt(buff[28+msg_len], buff[28+msg_len+1], buff[28+msg_len+2], buff[28+msg_len+3]);
         struct Message msg = {MSG_ID, this->ID, src_id, 0, Function::Ack, ""};
         MSG_ID++;
         string str_msg = make_str_msg(msg);
@@ -299,6 +310,13 @@ Function Node::check_msg(string msg, int ret) {
             return Nack;
         }
         if (num_next_relay == 0) {  // the next node is the destination
+            string src_bytes;
+            addZero(src_bytes, src);
+            src_bytes += to_string(src); 
+            message += src_bytes; 
+            cout << "src_bytes: " << src_bytes << endl;
+            cout << "msg_len: " << msg_len << endl;
+            cout << "message: " << message << endl;
             return mysend(dest, msg_len, message);
         }
         string path = buff_str.substr(28+msg_len+4,len);  // cut my id from payload
@@ -429,18 +447,22 @@ Function Node::discover(int destID, int father, string payload_str) {
 /* send a message between neighbors */
 Function Node::mysend(int dest, int len, string message) {
     string bytes; 
-    addZero(bytes, len);  // add myself to the payload
+    addZero(bytes, len);  
     bytes += to_string(len);
     string concat = bytes+message;
-    const char* payload = concat.c_str();
-    struct Message msg = {MSG_ID, this->ID, dest, 0, Function::Send, payload};  
-    MSG_ID++;
-    string str_msg = make_str_msg(msg);
-    const char* chars_msg = str_msg.c_str();
     int index = getIndexByID(neighbors, dest); 
     int dest_sock = sockets[index];
-    if (send(dest_sock, chars_msg, str_msg.length(), 0) == -1) {
-        perror("send");
+    int trial = ceil(concat.length()/492.0);  // the number of message (pieces) to send 
+    for (unsigned j = 0; j < concat.length(); j += 492) {
+        string str = concat.substr(j, 492);
+        const char* payload = str.c_str();  
+        struct Message msg = {MSG_ID, this->ID, dest, trial-1, Function::Send, payload};  
+        MSG_ID++;
+        string str_msg = make_str_msg(msg);
+        const char* chars_msg = str_msg.c_str();
+        if (send(dest_sock, chars_msg, str_msg.length(), 0) == -1) {
+            perror("send");
+        }
     }
     int valread = read(dest_sock, buff, SIZE);
     int func_id = bytesToInt(buff[16], buff[17], buff[18], buff[19]); 
@@ -452,7 +474,8 @@ Function Node::mysend(int dest, int len, string message) {
 
 
 Function Node::relay(int nextID, int num_msgs, int destID, int len, string message, string path) {
-    string concat = create_relay_payload(num_msgs, len, message, path);
+    string message2 = message.substr(0,len);
+    string concat = create_relay_payload(num_msgs, len, message2, path);
     const char* payload = concat.c_str();
     int trial = 0;  // compute it ....
     struct Message msg = {MSG_ID, this->ID, nextID, trial, Function::Relay, payload};  
