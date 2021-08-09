@@ -42,14 +42,15 @@ int getIndexByVal(vector<int> v, int val) {
 }
 
 
+/* to not send a discover message to nodes that already got it */
 bool isInPayload(string payload_str, int id) {
-    // cout << "isInPayload" << endl;
-    cout << payload_str << endl; 
     const char* payload = payload_str.c_str();
     int next;
-    for (int i = 4; i < payload_str.size(); i+=4) {
+    for (int i = 4; i < payload_str.size(); i+=4) {  // start with 4, cause the first 4 bytes are destID
         next = bytesToInt(payload[i], payload[i+1], payload[i+2], payload[i+3]); 
-        if (next == id) return true; 
+        if (next == id) {
+            return true; 
+        }
     }
     return false;
 }
